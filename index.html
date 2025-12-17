@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>School Finance Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -12,6 +12,9 @@
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
+                    },
+                    padding: {
+                        'safe-bottom': 'env(safe-area-inset-bottom)',
                     }
                 }
             }
@@ -28,14 +31,17 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
-        body { -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; }
+        body { -webkit-tap-highlight-color: transparent; font-family: 'Inter', sans-serif; overscroll-behavior-y: none; }
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        /* Custom Scrollbar for Desktop */
+        @media (min-width: 768px) {
+            ::-webkit-scrollbar { width: 6px; }
+            ::-webkit-scrollbar-track { background: transparent; }
+            ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+            ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        }
         
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -48,27 +54,9 @@
         /* Loan Detail Animation */
         .loan-details { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
         .loan-details.open { max-height: 500px; }
-
-        /* FAB */
-        .fab {
-            position: fixed;
-            bottom: 80px;
-            right: 24px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background-color: #4f46e5;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 50;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .fab:active { transform: scale(0.95); }
-        @media (min-width: 768px) { .fab { bottom: 24px; } }
+        
+        /* Mobile Specifics */
+        .mobile-container { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-slate-900 dark:text-slate-100">
@@ -117,6 +105,7 @@
             History: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" /></svg>,
             X: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>,
             Wallet: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7h-7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Z"/><path d="M16 11h.01"/></svg>,
+            Home: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
         };
 
         // --- Firebase Config ---
@@ -806,8 +795,8 @@
 
             return (
                 <div className={`min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 ${darkMode ? 'dark' : ''}`}>
-                    {/* Sidebar */}
-                    <div className="hidden md:flex md:flex-col md:fixed md:left-0 md:top-0 md:h-screen md:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-6 z-20">
+                    {/* PC/Desktop Layout */}
+                    <div className="hidden md:flex flex-col md:fixed md:left-0 md:top-0 md:h-screen md:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-6 z-20">
                         <h1 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-8">My Wallet Pro</h1>
                         <nav className="space-y-2 flex-1">
                             {['dashboard', 'students', 'history', 'add', 'settings'].map(tab => (
@@ -826,25 +815,60 @@
                         </div>
                     </div>
 
-                    <div className="md:ml-64 min-h-screen flex flex-col">
-                        <header className="hidden md:flex justify-between items-center p-8 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700">
+                    {/* Mobile Bottom Navigation */}
+                    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-50 px-6 py-2 pb-safe-bottom flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 ${activeTab === 'dashboard' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
+                            <Icons.PieChart className="w-6 h-6" />
+                            <span className="text-[10px] font-medium">Home</span>
+                        </button>
+                        <button onClick={() => setActiveTab('students')} className={`flex flex-col items-center gap-1 ${activeTab === 'students' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
+                            <Icons.GraduationCap className="w-6 h-6" />
+                            <span className="text-[10px] font-medium">Students</span>
+                        </button>
+                        
+                        <div className="relative -top-5">
+                            <button onClick={() => setActiveTab('add')} className="w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 transition transform active:scale-95">
+                                <Icons.Plus className="w-8 h-8" />
+                            </button>
+                        </div>
+
+                        <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center gap-1 ${activeTab === 'history' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
+                            <Icons.History className="w-6 h-6" />
+                            <span className="text-[10px] font-medium">History</span>
+                        </button>
+                        <button onClick={() => setActiveTab('settings')} className={`flex flex-col items-center gap-1 ${activeTab === 'settings' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>
+                            <Icons.Building2 className="w-6 h-6" />
+                            <span className="text-[10px] font-medium">Settings</span>
+                        </button>
+                    </div>
+
+                    <div className="md:ml-64 min-h-screen flex flex-col pb-24 md:pb-0">
+                        {/* Header - Desktop Only */}
+                        <header className="hidden md:flex justify-between items-center p-8 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 sticky top-0 z-10 shadow-sm">
                             <h2 className="text-2xl font-bold capitalize">{activeTab}</h2>
                             <div className="flex items-center gap-4">
-                                <button onClick={() => setShowChartModal(true)} className="p-2 rounded-full bg-indigo-50 text-indigo-500"><Icons.PieChart className="w-5 h-5" /></button>
-                                <button onClick={fixCorruptedDataInternal} className="p-2 rounded-full bg-red-50 text-red-500"><Icons.Tool className="w-5 h-5" /></button>
-                                <button onClick={toggleDarkMode} className="p-2 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">{darkMode ? <Icons.Sun className="w-5 h-5" /> : <Icons.Moon className="w-5 h-5" />}</button>
+                                <button onClick={() => setShowChartModal(true)} className="p-2 rounded-full bg-indigo-50 text-indigo-500 hover:bg-indigo-100 transition"><Icons.PieChart className="w-5 h-5" /></button>
+                                <button onClick={fixCorruptedDataInternal} className="p-2 rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition"><Icons.Tool className="w-5 h-5" /></button>
+                                <button onClick={toggleDarkMode} className="p-2 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 transition hover:scale-110">{darkMode ? <Icons.Sun className="w-5 h-5" /> : <Icons.Moon className="w-5 h-5" />}</button>
                                 <div className="text-right"><p className="text-xs text-slate-400 font-bold uppercase">Total Balance</p><p className={`text-3xl font-extrabold ${balanceColor}`}>₹{summary.balance.toLocaleString()}</p></div>
                             </div>
                         </header>
 
-                        <main className="px-4 -mt-8 md:mt-0 md:p-8 space-y-6 relative z-10 flex-1 overflow-y-auto">
-                            {/* Mobile Tabs */}
-                            <div className="md:hidden flex bg-white dark:bg-slate-800 p-1 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-4 overflow-x-auto no-scrollbar">
-                                {['dashboard', 'students', 'history', 'add', 'settings'].map(tab => (
-                                    <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2 px-4 text-xs font-medium rounded-lg capitalize whitespace-nowrap ${activeTab === tab ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500'}`}>{tab}</button>
-                                ))}
+                        {/* Header - Mobile Only */}
+                        <header className="md:hidden bg-indigo-600 dark:bg-indigo-900 text-white pt-8 pb-10 px-6 rounded-b-[2rem] shadow-lg mb-6 sticky top-0 z-10">
+                            <div className="flex justify-between items-center mb-4">
+                                <div><h1 className="text-xl font-bold">My Wallet</h1><p className="text-indigo-200 text-xs">Mobile Manager</p></div>
+                                <div className="flex gap-2">
+                                    <button onClick={toggleDarkMode} className="p-2 rounded-full bg-white/20 backdrop-blur-sm active:bg-white/30 transition">{darkMode ? <Icons.Sun className="w-5 h-5" /> : <Icons.Moon className="w-5 h-5" />}</button>
+                                </div>
                             </div>
+                            <div className="text-center">
+                                <p className="text-indigo-200 text-xs font-bold uppercase mb-1">Total Net Balance</p>
+                                <h2 className="text-4xl font-extrabold tracking-tight">₹{summary.balance.toLocaleString()}</h2>
+                            </div>
+                        </header>
 
+                        <main className="flex-1 px-4 md:px-8 py-4 md:py-8 max-w-7xl mx-auto w-full">
                             {activeTab === 'dashboard' && (
                                 <div className="space-y-6 animate-fade-in">
                                     {/* Loan Liability */}
@@ -987,8 +1011,8 @@
                                         <div onClick={() => setStudentFilterType('pending')} className={`p-5 rounded-2xl text-center shadow-sm border filter-card ${studentFilterType === 'pending' ? 'active' : 'bg-rose-50 border-rose-100 dark:bg-rose-900/30 dark:border-rose-800'}`}><p className="text-xs text-rose-600 dark:text-rose-300 font-bold tracking-widest uppercase mb-1">Total Pending</p><p className="text-3xl font-extrabold text-rose-900 dark:text-white">₹{tStats.totalPending.toLocaleString()}</p></div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                        <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                                        <div className="xl:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                                             <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg text-slate-700 dark:text-slate-200">Student Directory</h3><div className="flex gap-2"><button onClick={() => { setEditingStudent(null); setStudentName(''); setStudentParent(''); setStudentFee(''); setStudentJoinDate(''); setStudentLeaveDate(''); setStudentPhone(''); }} className="text-xs bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 px-3 py-1 rounded-lg font-bold hover:bg-indigo-100">Add New</button></div></div>
                                             
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1008,7 +1032,7 @@
                                         </div>
                                         
                                         {/* Right Column: Add/Edit Form */}
-                                        <div className="lg:col-span-1">
+                                        <div className="xl:col-span-1">
                                             <div id="student-form" className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 sticky top-6">
                                                 <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-lg text-slate-700 dark:text-slate-200">{editingStudent ? 'Edit Student' : 'Register Student'}</h3>{editingStudent && <button onClick={handleCancelStudentEdit} className="text-xs text-slate-500 underline">Cancel</button>}</div>
                                                 <form onSubmit={handleStudentSubmit} className="flex flex-col gap-4">
