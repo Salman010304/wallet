@@ -1,10 +1,10 @@
 // --- Imports (Firebase) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, doc, updateDoc, setDoc, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 // --- Configuration ---
-// FIXED: Hardcoded config for GitHub Pages support
+// FIXED: Hardcoded config for GitHub Pages / Static Hosting
 const firebaseConfig = {
     apiKey: "AIzaSyDdrgAesHPCVtm7rdaKmzNrlVqDDKtkjd8",
     authDomain: "calcwallet.firebaseapp.com",
