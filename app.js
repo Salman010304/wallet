@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 // --- Configuration ---
@@ -12,9 +12,18 @@ const firebaseConfig = {
     appId: "1:854785212440:web:803667e23f4e1755a2c36d"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Initialize Firebase safely
+let app, auth, db;
+let firebaseError = null;
+
+try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+} catch (e) {
+    console.error("Firebase Init Error:", e);
+    firebaseError = e.message;
+}
 
 // --- Constants ---
 const ACCOUNTS = ['Cash', 'HDFC Bank', 'SBI Bank', 'HDFC Credit', 'AU Credit'];
@@ -56,15 +65,12 @@ const state = {
         isSubmitting: false,
         editingTxId: null,
         editingStudentId: null,
-        // Transaction Form
         type: 'expense', category: 'Food', amount: '', description: '', 
         studentName: '', feeMonth: '', paymentMethod: 'Cash', transferTo: 'HDFC Bank',
         date: new Date().toISOString().split('T')[0], selectedMonths: [],
         selectedLoanId: '', selectedCreditCard: '',
-        // Student Form
         sName: '', sParent: '', sFee: '', sJoin: '', sLeave: '', 
         sStd: STANDARDS[0], sMedium: MEDIUMS[0], sBoard: 'GSEB', sSchool: '', sPhone: '',
-        // Settings
         reminderMsg: localStorage.getItem('my_wallet_msg') || "Hello {parent}, Fees reminder for {name}. Amount: {amount}. Due: {months}."
     }
 };
@@ -79,52 +85,51 @@ const saveLocalData = () => {
 };
 
 const getStudentFinancials = (student) => {
-    if (!student || !student.joinDate) return { paid: 0, pending: 0, status: 'New', missingMonths: [] };
-    
-    const join = new Date(student.joinDate);
-    const today = new Date();
-    let endDate = today;
-    if (student.leaveDate) {
-        const leave = new Date(student.leaveDate);
-        if (!isNaN(leave.getTime()) && leave < today) endDate = leave;
-    }
-
-    let current = new Date(join);
-    current.setDate(1); // Normalise to 1st of month
-    
-    let totalExpected = 0;
-    const expectedMonths = [];
-    let safety = 0;
-
-    while (current <= endDate && safety < 60) {
-        expectedMonths.push(MONTHS[current.getMonth()]);
+    try {
+        if (!student || !student.joinDate) return { paid: 0, pending: 0, status: 'New', missingMonths: [] };
         
-        // Pro-rata logic
-        const isJoinMonth = current.getMonth() === join.getMonth() && current.getFullYear() === join.getFullYear();
-        if (isJoinMonth) {
-            const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
-            const daysActive = daysInMonth - join.getDate() + 1;
-            totalExpected += Math.round((student.monthlyFee / daysInMonth) * daysActive);
-        } else {
-            totalExpected += (parseFloat(student.monthlyFee) || 0);
+        const join = new Date(student.joinDate);
+        const today = new Date();
+        let endDate = today;
+        if (student.leaveDate) {
+            const leave = new Date(student.leaveDate);
+            if (!isNaN(leave.getTime()) && leave < today) endDate = leave;
         }
+
+        let current = new Date(join);
+        current.setDate(1); 
         
-        current.setMonth(current.getMonth() + 1);
-        safety++;
-    }
+        let totalExpected = 0;
+        const expectedMonths = [];
+        let safety = 0;
 
-    const paidTx = state.transactions.filter(t => t.studentName === student.name && t.category === 'Tuition Fees' && t.type === 'income');
-    const totalPaid = paidTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-    const missingMonths = expectedMonths.filter(m => !paidTx.some(t => t.feeMonth && t.feeMonth.includes(m)));
-    const pending = totalExpected - totalPaid;
+        while (current <= endDate && safety < 60) {
+            expectedMonths.push(MONTHS[current.getMonth()]);
+            const isJoinMonth = current.getMonth() === join.getMonth() && current.getFullYear() === join.getFullYear();
+            if (isJoinMonth) {
+                const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+                const daysActive = daysInMonth - join.getDate() + 1;
+                totalExpected += Math.round((student.monthlyFee / daysInMonth) * daysActive);
+            } else {
+                totalExpected += (parseFloat(student.monthlyFee) || 0);
+            }
+            current.setMonth(current.getMonth() + 1);
+            safety++;
+        }
 
-    let status = 'Paid';
-    if (student.leaveDate && pending <= 0) status = 'Left (Paid)';
-    else if (pending > (student.monthlyFee || 0)) status = 'Overdue';
-    else if (pending > 0) status = 'Due';
-    else if (pending < 0) status = 'Advance';
+        const paidTx = state.transactions.filter(t => t.studentName === student.name && t.category === 'Tuition Fees' && t.type === 'income');
+        const totalPaid = paidTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+        const missingMonths = expectedMonths.filter(m => !paidTx.some(t => t.feeMonth && t.feeMonth.includes(m)));
+        const pending = totalExpected - totalPaid;
 
-    return { paid: totalPaid, pending: pending > 0 ? pending : 0, missingMonths, status };
+        let status = 'Paid';
+        if (student.leaveDate && pending <= 0) status = 'Left (Paid)';
+        else if (pending > (student.monthlyFee || 0)) status = 'Overdue';
+        else if (pending > 0) status = 'Due';
+        else if (pending < 0) status = 'Advance';
+
+        return { paid: totalPaid, pending: pending > 0 ? pending : 0, missingMonths, status };
+    } catch(e) { return { paid: 0, pending: 0, status: 'Error', missingMonths: [] }; }
 };
 
 const calculateSummary = () => {
@@ -165,7 +170,6 @@ const calculateSummary = () => {
     return { income, expense, balance: totalLiquid, cashGroup, bankGroup, creditGroup, totalLoanPending, incomeByCat, expenseByCat };
 };
 
-// --- Render Helpers ---
 const Icons = {
     PieChart: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>`,
     GraduationCap: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`,
@@ -173,9 +177,7 @@ const Icons = {
     Plus: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
     Settings: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
     Trash: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
-    Edit: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
-    ChevronDown: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
-    ChevronUp: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`
+    Edit: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`
 };
 
 const renderDonut = (income, expense) => {
@@ -205,6 +207,12 @@ const appLogic = {
         localStorage.setItem('wallet_dark_mode', state.darkMode);
         render();
     },
+
+    setMode: (mode) => {
+        state.mode = mode;
+        if(mode === 'local') appLogic.loadLocal();
+        else render();
+    },
     
     setChartView: (view) => { state.chartView = view; render(); },
 
@@ -213,7 +221,7 @@ const appLogic = {
         try {
             await signInWithEmailAndPassword(auth, state.login.email, state.login.password);
         } catch (err) {
-            state.login.error = err.message;
+            state.login.error = err.message + " (Check 'Authorized Domains' in Firebase if hosted)";
             render();
         }
     },
@@ -224,38 +232,36 @@ const appLogic = {
             state.students = JSON.parse(localStorage.getItem('my_wallet_students') || '[]');
             state.loans = JSON.parse(localStorage.getItem('my_wallet_loans') || '[]');
             state.openingBalances = JSON.parse(localStorage.getItem('my_wallet_opening_balances') || '{}');
+            state.loading = false;
+            render();
         } catch(e) { console.error(e); }
-        state.loading = false;
-        render();
     },
 
     saveTx: async (e) => {
         e.preventDefault();
         if(state.form.isSubmitting) return;
         state.form.isSubmitting = true;
-        render(); // show loading state
+        render();
         
         const f = state.form;
         let desc = f.description;
         let cat = f.category;
-        let type = f.type;
         let feeMonth = f.feeMonth;
         
-        if (cat === 'Tuition Fees' && type === 'income') {
+        if (cat === 'Tuition Fees' && f.type === 'income') {
             const mStr = f.selectedMonths.join(', ') || feeMonth;
             feeMonth = mStr;
             desc = `Tuition: ${f.studentName} (${mStr})`;
         }
         
-        if (cat === 'Loan/EMI' && f.selectedLoanId && type === 'expense') {
+        if (cat === 'Loan/EMI' && f.selectedLoanId && f.type === 'expense') {
             const l = state.loans.find(x => x.id === f.selectedLoanId);
             if(l) desc = `EMI: ${l.name}`;
-            // Handle loan balance update logic separate or implicitly via edit
         }
 
         const txData = {
-            amount: parseFloat(f.amount), description: desc, category: cat, type: type,
-            paymentMethod: f.paymentMethod, transferTo: type === 'transfer' ? f.transferTo : null,
+            amount: parseFloat(f.amount), description: desc, category: cat, type: f.type,
+            paymentMethod: f.paymentMethod, transferTo: f.type === 'transfer' ? f.transferTo : null,
             date: f.date, dateStr: new Date(f.date).toLocaleDateString(),
             studentName: (cat === 'Tuition Fees') ? f.studentName : null,
             feeMonth: (cat === 'Tuition Fees') ? feeMonth : null,
@@ -274,12 +280,10 @@ const appLogic = {
                 }
                 saveLocalData();
             }
-            
-            // Reset Form
             state.form.amount = ''; state.form.description = ''; state.form.selectedMonths = []; 
             state.form.editingTxId = null;
-            if(type !== 'income') state.activeTab = 'dashboard';
-        } catch(err) { alert(err.message); }
+            if(f.type !== 'income') state.activeTab = 'dashboard';
+        } catch(err) { alert("Save failed: " + err.message); }
         
         state.form.isSubmitting = false;
         render();
@@ -313,7 +317,6 @@ const appLogic = {
         }
     },
 
-    // Student Logic
     saveStudent: async (e) => {
         e.preventDefault();
         const f = state.form;
@@ -333,7 +336,7 @@ const appLogic = {
                 else state.students = [...state.students, { ...sData, id: Date.now().toString() }];
                 saveLocalData();
             }
-            f.editingStudentId = null; f.sName = ''; f.sPhone = ''; // Reset basic fields
+            f.editingStudentId = null; f.sName = ''; f.sPhone = ''; 
             alert("Student Saved");
             render();
         } catch(err) { alert("Error saving student"); }
@@ -347,29 +350,25 @@ const appLogic = {
         f.sName = s.name; f.sParent = s.parentName; f.sPhone = s.phone;
         f.sJoin = s.joinDate; f.sLeave = s.leaveDate; f.sFee = s.monthlyFee;
         f.sStd = s.std; f.sMedium = s.medium; f.sSchool = s.school; f.sBoard = s.board;
-        // Scroll to form if needed or close modal
         state.viewingStudent = null;
         render();
-        document.getElementById('student-form')?.scrollIntoView({ behavior: 'smooth' });
+        const formEl = document.getElementById('student-form');
+        if(formEl) formEl.scrollIntoView({ behavior: 'smooth' });
     }
 };
 
-// Global Exposure for Inline Events (Simple & Dirty but works for CSP-free inline calls if needed, otherwise we use delegation)
 window.app = appLogic;
 
 // --- Rendering ---
-
 function render() {
     const root = document.getElementById('root');
     const { darkMode, activeTab, user, loading, mode } = state;
-    
-    // Apply Dark Mode Class
     if (darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
 
     // 1. Loading State
     if (loading) {
-        root.innerHTML = `<div class="flex h-screen items-center justify-center dark:bg-slate-900"><div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>`;
+        // We do NOT overwrite root.innerHTML here to keep the error listener and fallback button alive in index.html
         return;
     }
 
@@ -379,31 +378,29 @@ function render() {
         <div class="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6">
             <div class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl max-w-sm w-full border border-slate-200 dark:border-slate-700">
                 <h2 class="text-2xl font-bold text-center dark:text-white mb-6">Wallet Login</h2>
-                ${state.login.error ? `<div class="text-red-500 text-sm mb-4">${state.login.error}</div>` : ''}
+                ${firebaseError ? `<div class="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm"><b>Firebase Init Failed:</b> ${firebaseError}</div>` : ''}
+                ${state.login.error ? `<div class="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">${state.login.error}</div>` : ''}
                 <form id="loginForm" class="space-y-4">
                     <input type="email" id="email" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:text-white" placeholder="Email" value="${state.login.email}">
                     <input type="password" id="password" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:text-white" placeholder="Password" value="${state.login.password}">
                     <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold">Login</button>
                 </form>
-                <button id="btnSwitchLocal" class="w-full mt-6 text-slate-400 text-sm">Switch to Offline Mode</button>
+                <button id="btnSwitchLocal" class="w-full mt-6 text-slate-400 text-sm hover:text-slate-600">Switch to Offline Mode</button>
             </div>
         </div>`;
+        attachEvents();
         return;
     }
 
     // 3. Main App Layout
     const summary = calculateSummary();
-    
-    // Nav Generator
     const navItem = (id, icon, label) => `
         <button class="nav-btn flex flex-col items-center gap-1 ${activeTab === id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}" data-tab="${id}">
             <div class="w-6 h-6 pointer-events-none">${icon}</div>
             <span class="text-[10px] font-medium pointer-events-none">${label}</span>
         </button>`;
 
-    // --- Tab Content Generators ---
     let mainContent = '';
-
     if (activeTab === 'dashboard') {
         const recentTx = state.transactions.slice(0, 8).map(t => `
             <div class="flex justify-between items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-700">
@@ -414,16 +411,13 @@ function render() {
                     <button class="text-red-400 p-1 btn-del-tx" data-id="${t.id}">${Icons.Trash}</button>
                 </div>
             </div>`).join('');
-
         const incomeList = Object.entries(summary.incomeByCat || {}).map(([k,v]) => `<div class="flex justify-between text-xs mb-1"><span class="dark:text-slate-300">${k}</span><span class="font-bold dark:text-white">₹${v}</span></div>`).join('');
-        
         mainContent = `
             <div class="space-y-6 animate-fade-in pb-24">
                 <div class="grid grid-cols-2 gap-4">
                     ${summary.cashGroup.map(a => `<div class="bg-emerald-500 text-white p-5 rounded-2xl shadow-lg"> <p class="text-xs font-bold uppercase opacity-70">Cash</p> <p class="text-2xl font-bold">₹${a.amount}</p> </div>`).join('')}
                     ${summary.bankGroup.map(a => `<div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border dark:border-slate-700 shadow-sm"> <p class="text-xs font-bold uppercase text-slate-400">${a.name}</p> <p class="text-2xl font-bold dark:text-white">₹${a.amount}</p> </div>`).join('')}
                 </div>
-                
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="font-bold flex items-center gap-2 dark:text-white">Analytics</h3>
@@ -434,7 +428,6 @@ function render() {
                     </div>
                     ${state.chartView === 'overview' ? renderDonut(summary.income, summary.expense) : (state.chartView === 'income' ? incomeList : '<div class="text-center text-xs">Expense Details...</div>')}
                 </div>
-
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
                      <div class="p-4 border-b dark:border-slate-700 font-bold text-sm dark:text-white">Recent Transactions</div>
                      <div class="divide-y divide-slate-100 dark:divide-slate-700">${recentTx}</div>
@@ -447,19 +440,11 @@ function render() {
             let color = 'text-gray-500';
             if (fin.status === 'Overdue') color = 'text-red-600';
             else if (fin.status === 'Paid') color = 'text-emerald-600';
-            return `
-            <div class="bg-white dark:bg-slate-700 border dark:border-slate-600 p-4 rounded-xl mb-3 cursor-pointer btn-view-student" data-id="${s.id}">
-                <div class="flex justify-between">
-                    <div><p class="font-bold dark:text-white">${s.name}</p><p class="text-xs text-slate-500">${s.parentName || ''}</p></div>
-                    <p class="text-xs font-bold ${color}">${fin.status}</p>
-                </div>
-            </div>`;
+            return `<div class="bg-white dark:bg-slate-700 border dark:border-slate-600 p-4 rounded-xl mb-3 cursor-pointer btn-view-student" data-id="${s.id}"><div class="flex justify-between"><div><p class="font-bold dark:text-white">${s.name}</p><p class="text-xs text-slate-500">${s.parentName || ''}</p></div><p class="text-xs font-bold ${color}">${fin.status}</p></div></div>`;
         }).join('');
-
         mainContent = `
         <div class="space-y-6 pb-24">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">${studentList}</div>
-            
             <div id="student-form" class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border dark:border-slate-700">
                 <h3 class="font-bold mb-4 dark:text-white">${state.form.editingStudentId ? 'Edit Student' : 'Add Student'}</h3>
                 <form id="studentForm" class="space-y-3">
@@ -480,35 +465,12 @@ function render() {
                 <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-2xl mb-6">
                     ${['expense','income','transfer'].map(t => `<button class="flex-1 py-3 rounded-xl text-sm font-bold capitalize ${f.type === t ? 'bg-white dark:bg-slate-600 shadow-sm' : 'text-slate-500'}" onclick="state.form.type='${t}'; render()">${t}</button>`).join('')}
                 </div>
-                
                 <form id="txForm" class="space-y-4">
-                    ${f.type === 'income' ? `
-                    <div>
-                        <label class="text-xs font-bold text-slate-400 block mb-2">CATEGORY</label>
-                        <div class="flex gap-2 flex-wrap">
-                            ${['Tuition Fees', 'Salary', 'Other'].map(c => `<button type="button" class="px-4 py-2 rounded-full text-xs font-bold border ${f.category === c ? 'bg-indigo-600 text-white' : 'dark:text-white'}" onclick="state.form.category='${c}'; render()">${c}</button>`).join('')}
-                        </div>
-                    </div>` : ''}
-
-                    ${f.category === 'Tuition Fees' && f.type === 'income' ? `
-                    <input list="st-list" placeholder="Student Name" class="w-full p-3 rounded-xl border dark:bg-slate-700 dark:text-white" value="${f.studentName}" onchange="state.form.studentName = this.value">
-                    <datalist id="st-list">${state.students.map(s => `<option value="${s.name}">`).join('')}</datalist>
-                    ` : `
-                    <input placeholder="Description" class="w-full p-4 rounded-2xl border dark:bg-slate-700 dark:text-white" value="${f.description}" onchange="state.form.description = this.value">
-                    `}
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="number" placeholder="0.00" class="w-full p-4 rounded-2xl border font-bold text-lg dark:bg-slate-700 dark:text-white" value="${f.amount}" onchange="state.form.amount = this.value">
-                        <input type="date" class="w-full p-4 rounded-2xl border dark:bg-slate-700 dark:text-white" value="${f.date}" onchange="state.form.date = this.value">
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-2">
-                        ${ACCOUNTS.map(a => `<button type="button" class="py-3 px-1 rounded-xl text-[10px] font-bold border ${f.paymentMethod === a ? 'bg-indigo-600 text-white' : 'dark:text-white dark:bg-slate-700'}" onclick="state.form.paymentMethod='${a}'; render()">${a}</button>`).join('')}
-                    </div>
-
-                    <button type="submit" class="w-full bg-slate-900 dark:bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg ${f.isSubmitting ? 'btn-loading' : ''}">
-                        ${f.isSubmitting ? 'Saving...' : 'Save Transaction'}
-                    </button>
+                    ${f.type === 'income' ? `<div><label class="text-xs font-bold text-slate-400 block mb-2">CATEGORY</label><div class="flex gap-2 flex-wrap">${['Tuition Fees', 'Salary', 'Other'].map(c => `<button type="button" class="px-4 py-2 rounded-full text-xs font-bold border ${f.category === c ? 'bg-indigo-600 text-white' : 'dark:text-white'}" onclick="state.form.category='${c}'; render()">${c}</button>`).join('')}</div></div>` : ''}
+                    ${f.category === 'Tuition Fees' && f.type === 'income' ? `<input list="st-list" placeholder="Student Name" class="w-full p-3 rounded-xl border dark:bg-slate-700 dark:text-white" value="${f.studentName}" onchange="state.form.studentName = this.value"><datalist id="st-list">${state.students.map(s => `<option value="${s.name}">`).join('')}</datalist>` : `<input placeholder="Description" class="w-full p-4 rounded-2xl border dark:bg-slate-700 dark:text-white" value="${f.description}" onchange="state.form.description = this.value">`}
+                    <div class="grid grid-cols-2 gap-4"><input type="number" placeholder="0.00" class="w-full p-4 rounded-2xl border font-bold text-lg dark:bg-slate-700 dark:text-white" value="${f.amount}" onchange="state.form.amount = this.value"><input type="date" class="w-full p-4 rounded-2xl border dark:bg-slate-700 dark:text-white" value="${f.date}" onchange="state.form.date = this.value"></div>
+                    <div class="grid grid-cols-3 gap-2">${ACCOUNTS.map(a => `<button type="button" class="py-3 px-1 rounded-xl text-[10px] font-bold border ${f.paymentMethod === a ? 'bg-indigo-600 text-white' : 'dark:text-white dark:bg-slate-700'}" onclick="state.form.paymentMethod='${a}'; render()">${a}</button>`).join('')}</div>
+                    <button type="submit" class="w-full bg-slate-900 dark:bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg ${f.isSubmitting ? 'btn-loading' : ''}">${f.isSubmitting ? 'Saving...' : 'Save Transaction'}</button>
                 </form>
             </div>
         </div>`;
@@ -518,46 +480,26 @@ function render() {
         <div class="pb-24 p-4 space-y-6">
             <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm">
                 <h3 class="font-bold dark:text-white mb-4">Actions</h3>
-                <button onclick="state.mode='local'; state.user=null; render()" class="w-full border p-3 rounded-xl mb-2 dark:text-white">Logout / Offline Mode</button>
+                <button onclick="window.app.setMode('local'); state.user=null; render()" class="w-full border p-3 rounded-xl mb-2 dark:text-white">Logout / Offline Mode</button>
                 <button onclick="app.toggleDarkMode()" class="w-full border p-3 rounded-xl dark:text-white">Toggle Dark Mode</button>
             </div>
         </div>`;
     }
 
-    // Wrap Logic
     root.innerHTML = `
         <div class="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 pb-safe-bottom">
             <header class="md:hidden bg-indigo-600 text-white pt-8 pb-10 px-6 rounded-b-[2rem] shadow-lg mb-6 sticky top-0 z-10">
-                <div class="flex justify-between items-center mb-4">
-                    <div><h1 class="text-xl font-bold">My Wallet</h1></div>
-                    <button onclick="app.toggleDarkMode()" class="p-2 bg-white/20 rounded-full">${state.darkMode ? Icons.PieChart : Icons.PieChart}</button>
-                </div>
-                <div class="text-center">
-                    <p class="text-indigo-200 text-xs font-bold uppercase mb-1">Total Balance</p>
-                    <h2 class="text-4xl font-extrabold tracking-tight">₹${summary.balance.toLocaleString()}</h2>
-                </div>
+                <div class="flex justify-between items-center mb-4"><div><h1 class="text-xl font-bold">My Wallet</h1></div><button onclick="app.toggleDarkMode()" class="p-2 bg-white/20 rounded-full">${state.darkMode ? Icons.PieChart : Icons.PieChart}</button></div>
+                <div class="text-center"><p class="text-indigo-200 text-xs font-bold uppercase mb-1">Total Balance</p><h2 class="text-4xl font-extrabold tracking-tight">₹${summary.balance.toLocaleString()}</h2></div>
             </header>
-
-            <main class="px-4 max-w-4xl mx-auto">
-                ${mainContent}
-            </main>
-
+            <main class="px-4 max-w-4xl mx-auto">${mainContent}</main>
             <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t dark:border-slate-800 z-50 px-6 py-2 pb-safe-bottom flex justify-between items-center shadow-lg">
-                ${navItem('dashboard', Icons.PieChart, 'Home')}
-                ${navItem('students', Icons.GraduationCap, 'Students')}
-                <div class="relative -top-5">
-                    <button class="w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 active:scale-95 nav-btn" data-tab="add">
-                        <div class="w-8 h-8 pointer-events-none">${Icons.Plus}</div>
-                    </button>
-                </div>
-                ${navItem('history', Icons.History, 'History')}
-                ${navItem('settings', Icons.Settings, 'Settings')}
+                ${navItem('dashboard', Icons.PieChart, 'Home')} ${navItem('students', Icons.GraduationCap, 'Students')}
+                <div class="relative -top-5"><button class="w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 active:scale-95 nav-btn" data-tab="add"><div class="w-8 h-8 pointer-events-none">${Icons.Plus}</div></button></div>
+                ${navItem('history', Icons.History, 'History')} ${navItem('settings', Icons.Settings, 'Settings')}
             </div>
-
             ${state.viewingStudent ? renderStudentModal(state.viewingStudent) : ''}
-        </div>
-    `;
-
+        </div>`;
     attachEvents();
 }
 
@@ -569,10 +511,7 @@ function renderStudentModal(student) {
             <div class="bg-indigo-600 p-6 text-white relative">
                 <h2 class="text-2xl font-bold">${student.name}</h2>
                 <p>${student.std} • ${student.school || 'No School'}</p>
-                <div class="mt-4 p-4 bg-white/10 rounded-xl flex justify-between">
-                    <span>Pending: ₹${fin.pending}</span>
-                    <span class="font-bold">${fin.status}</span>
-                </div>
+                <div class="mt-4 p-4 bg-white/10 rounded-xl flex justify-between"><span>Pending: ₹${fin.pending}</span><span class="font-bold">${fin.status}</span></div>
             </div>
             <div class="p-6 grid grid-cols-2 gap-3">
                  <button class="bg-indigo-600 text-white py-3 rounded-xl font-bold" onclick="state.form.studentName='${student.name}'; state.form.category='Tuition Fees'; state.form.type='income'; state.form.amount='${student.monthlyFee}'; state.activeTab='add'; state.viewingStudent=null; render()">Pay Fee</button>
@@ -582,67 +521,43 @@ function renderStudentModal(student) {
     </div>`;
 }
 
-// --- Event Delegation ---
 function attachEvents() {
-    // 1. Navigation
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.onclick = () => appLogic.setTab(btn.dataset.tab);
-    });
-
-    // 2. Forms
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.onclick = () => appLogic.setTab(btn.dataset.tab));
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.onsubmit = appLogic.handleLogin;
         document.getElementById('email').oninput = (e) => state.login.email = e.target.value;
         document.getElementById('password').oninput = (e) => state.login.password = e.target.value;
-        document.getElementById('btnSwitchLocal').onclick = () => { state.mode = 'local'; appLogic.loadLocal(); };
+        document.getElementById('btnSwitchLocal').onclick = () => { appLogic.setMode('local'); };
     }
-
-    const txForm = document.getElementById('txForm');
-    if (txForm) txForm.onsubmit = appLogic.saveTx;
-
-    const stForm = document.getElementById('studentForm');
-    if (stForm) stForm.onsubmit = appLogic.saveStudent;
-
-    const cancelEditSt = document.getElementById('cancelEditStudent');
-    if (cancelEditSt) cancelEditSt.onclick = () => { state.form.editingStudentId = null; state.form.sName = ''; render(); };
-
-    // 3. Dynamic Buttons (Edit/Delete)
+    const txForm = document.getElementById('txForm'); if (txForm) txForm.onsubmit = appLogic.saveTx;
+    const stForm = document.getElementById('studentForm'); if (stForm) stForm.onsubmit = appLogic.saveStudent;
+    const cancelEditSt = document.getElementById('cancelEditStudent'); if (cancelEditSt) cancelEditSt.onclick = () => { state.form.editingStudentId = null; state.form.sName = ''; render(); };
     document.querySelectorAll('.btn-edit-tx').forEach(btn => btn.onclick = () => appLogic.editTx(btn.dataset.id));
     document.querySelectorAll('.btn-del-tx').forEach(btn => btn.onclick = () => appLogic.deleteItem('transactions', btn.dataset.id));
-    document.querySelectorAll('.btn-view-student').forEach(btn => btn.onclick = () => {
-        state.viewingStudent = state.students.find(s => s.id === btn.dataset.id);
-        render();
-    });
+    document.querySelectorAll('.btn-view-student').forEach(btn => btn.onclick = () => { state.viewingStudent = state.students.find(s => s.id === btn.dataset.id); render(); });
 }
 
 // --- Initialization ---
-// 1. Listen for Auth
-onAuthStateChanged(auth, (u) => {
-    state.user = u;
-    if (u) {
-        // Realtime Listeners
-        const uid = u.uid;
-        onSnapshot(query(collection(db, 'users', uid, 'transactions')), (snap) => {
-            state.transactions = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a,b) => new Date(b.date) - new Date(a.date));
-            state.loading = false; render();
-        });
-        onSnapshot(query(collection(db, 'users', uid, 'students')), (snap) => {
-            state.students = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-            render();
-        });
-        onSnapshot(query(collection(db, 'users', uid, 'loans')), (snap) => {
-            state.loans = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-            render();
-        });
-        onSnapshot(doc(db, 'users', uid, 'settings', 'opening_balances'), (snap) => {
-            if(snap.exists()) state.openingBalances = snap.data();
-            render();
+try {
+    if(auth) {
+        onAuthStateChanged(auth, (u) => {
+            state.user = u;
+            if (u) {
+                const uid = u.uid;
+                onSnapshot(query(collection(db, 'users', uid, 'transactions')), (snap) => { state.transactions = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a,b) => new Date(b.date) - new Date(a.date)); state.loading = false; render(); });
+                onSnapshot(query(collection(db, 'users', uid, 'students')), (snap) => { state.students = snap.docs.map(d => ({ ...d.data(), id: d.id })); render(); });
+                onSnapshot(query(collection(db, 'users', uid, 'loans')), (snap) => { state.loans = snap.docs.map(d => ({ ...d.data(), id: d.id })); render(); });
+                onSnapshot(doc(db, 'users', uid, 'settings', 'opening_balances'), (snap) => { if(snap.exists()) state.openingBalances = snap.data(); render(); });
+            } else {
+                state.loading = false; render();
+            }
         });
     } else {
-        if(state.mode === 'cloud') { state.loading = false; render(); }
+        // Fallback if auth didn't init
+        state.loading = false; render();
     }
-});
-
-// 2. Initial Render
-render();
+} catch (e) {
+    console.error("Auth Listener Error:", e);
+    state.loading = false; render();
+}
