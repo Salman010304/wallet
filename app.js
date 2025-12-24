@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-// --- Configuration ---
+// --- 1. CONFIGURATION ---
 const firebaseConfig = {
     apiKey: "AIzaSyDdrgAesHPCVtm7rdaKmzNrlVqDDKtkjd8",
     authDomain: "calcwallet.firebaseapp.com",
@@ -12,552 +12,355 @@ const firebaseConfig = {
     appId: "1:854785212440:web:803667e23f4e1755a2c36d"
 };
 
-// Initialize Firebase safely
-let app, auth, db;
-let firebaseError = null;
+const APP_ID = 'school-finance-manager-v1';
 
+// Init Firebase
+let app, auth, db;
 try {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
 } catch (e) {
     console.error("Firebase Init Error:", e);
-    firebaseError = e.message;
 }
 
-// --- Constants ---
-const ACCOUNTS = ['Cash', 'HDFC Bank', 'SBI Bank', 'HDFC Credit', 'AU Credit'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const STANDARDS = ['Nursery', 'Jr.KG', 'Sr.KG', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th', 'College', 'Other'];
-const MEDIUMS = ['English', 'Gujarati'];
-const BOARDS = ['GSEB', 'CBSE', 'ICSE', 'IB', 'Other'];
-
-// --- State Management ---
+// --- 2. GLOBAL STATE ---
 const state = {
     user: null,
-    loading: true,
-    mode: 'cloud', // 'cloud' or 'local'
+    mode: 'cloud',
     activeTab: 'dashboard',
-    darkMode: localStorage.getItem('wallet_dark_mode') === 'true',
-    
-    // Data
     transactions: [],
     students: [],
     loans: [],
     openingBalances: {},
-    expenseCategories: JSON.parse(localStorage.getItem('wallet_categories')) || [
-        { name: 'Rent', icon: '🏠' }, { name: 'Electricity', icon: '⚡' },
-        { name: 'Internet', icon: '🌐' }, { name: 'Snacks/Tea', icon: '☕' },
-        { name: 'Stationery', icon: '✏️' }, { name: 'Travelling', icon: '🚲' },
-        { name: 'Routine Exp', icon: '🔄' }, { name: 'Family Exp', icon: '👨‍👩‍👧' },
-        { name: 'Loan/EMI', icon: '🏦' }, { name: 'Credit Card Bill', icon: '💳' }
-    ],
+    expenseCategories: [
+        { name: 'Rent', icon: '🏠' }, { name: 'Electricity', icon: '⚡' }, { name: 'Internet', icon: '🌐' },
+        { name: 'Snacks', icon: '☕' }, { name: 'Stationery', icon: '✏️' }, { name: 'Travel', icon: '🚲' }
+    ]
+};
 
-    // UI/Form State
-    filters: { dateStart: '', dateEnd: '', category: '', account: 'All', student: '', studentType: 'all' },
-    chartView: 'overview',
-    showLoanDetails: false,
-    viewingStudent: null,
+const ACCOUNTS = ['Cash', 'HDFC Bank', 'SBI Bank', 'HDFC Credit', 'AU Credit'];
+
+// --- 3. UI RENDERING HELPERS ---
+const getIcon = (name) => {
+    const icons = {
+        PieChart: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>',
+        GraduationCap: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>',
+        History: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>',
+        Plus: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+        Settings: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+        Banknote: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>',
+        CreditCard: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>',
+        ChevronUp: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>',
+        ChevronDown: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
+    };
+    return icons[name] || '';
+};
+
+// Initialize App
+document.addEventListener('DOMContentLoaded', () => {
     
-    // Forms
-    login: { email: '', password: '', error: '' },
-    form: {
-        isSubmitting: false,
-        editingTxId: null,
-        editingStudentId: null,
-        type: 'expense', category: 'Food', amount: '', description: '', 
-        studentName: '', feeMonth: '', paymentMethod: 'Cash', transferTo: 'HDFC Bank',
-        date: new Date().toISOString().split('T')[0], selectedMonths: [],
-        selectedLoanId: '', selectedCreditCard: '',
-        sName: '', sParent: '', sFee: '', sJoin: '', sLeave: '', 
-        sStd: STANDARDS[0], sMedium: MEDIUMS[0], sBoard: 'GSEB', sSchool: '', sPhone: '',
-        reminderMsg: localStorage.getItem('my_wallet_msg') || "Hello {parent}, Fees reminder for {name}. Amount: {amount}. Due: {months}."
-    }
-};
+    // Auth Listener
+    onAuthStateChanged(auth, (user) => {
+        const loader = document.getElementById('loading-overlay');
+        const login = document.getElementById('login-view');
+        const appLayout = document.getElementById('app-layout');
 
-// --- Helpers & Logic ---
-const saveLocalData = () => {
-    if (state.mode !== 'local') return;
-    localStorage.setItem('my_wallet_data', JSON.stringify(state.transactions));
-    localStorage.setItem('my_wallet_students', JSON.stringify(state.students));
-    localStorage.setItem('my_wallet_loans', JSON.stringify(state.loans));
-    localStorage.setItem('my_wallet_opening_balances', JSON.stringify(state.openingBalances));
-};
+        state.user = user;
 
-const getStudentFinancials = (student) => {
-    try {
-        if (!student || !student.joinDate) return { paid: 0, pending: 0, status: 'New', missingMonths: [] };
-        
-        const join = new Date(student.joinDate);
-        const today = new Date();
-        let endDate = today;
-        if (student.leaveDate) {
-            const leave = new Date(student.leaveDate);
-            if (!isNaN(leave.getTime()) && leave < today) endDate = leave;
-        }
-
-        let current = new Date(join);
-        current.setDate(1); 
-        
-        let totalExpected = 0;
-        const expectedMonths = [];
-        let safety = 0;
-
-        while (current <= endDate && safety < 60) {
-            expectedMonths.push(MONTHS[current.getMonth()]);
-            const isJoinMonth = current.getMonth() === join.getMonth() && current.getFullYear() === join.getFullYear();
-            if (isJoinMonth) {
-                const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
-                const daysActive = daysInMonth - join.getDate() + 1;
-                totalExpected += Math.round((student.monthlyFee / daysInMonth) * daysActive);
-            } else {
-                totalExpected += (parseFloat(student.monthlyFee) || 0);
-            }
-            current.setMonth(current.getMonth() + 1);
-            safety++;
-        }
-
-        const paidTx = state.transactions.filter(t => t.studentName === student.name && t.category === 'Tuition Fees' && t.type === 'income');
-        const totalPaid = paidTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-        const missingMonths = expectedMonths.filter(m => !paidTx.some(t => t.feeMonth && t.feeMonth.includes(m)));
-        const pending = totalExpected - totalPaid;
-
-        let status = 'Paid';
-        if (student.leaveDate && pending <= 0) status = 'Left (Paid)';
-        else if (pending > (student.monthlyFee || 0)) status = 'Overdue';
-        else if (pending > 0) status = 'Due';
-        else if (pending < 0) status = 'Advance';
-
-        return { paid: totalPaid, pending: pending > 0 ? pending : 0, missingMonths, status };
-    } catch(e) { return { paid: 0, pending: 0, status: 'Error', missingMonths: [] }; }
-};
-
-const calculateSummary = () => {
-    let income = 0, expense = 0;
-    const balances = {};
-    const incomeByCat = {};
-    const expenseByCat = {};
-    
-    ACCOUNTS.forEach(acc => balances[acc] = parseFloat(state.openingBalances[acc] || 0));
-
-    state.transactions.forEach(t => {
-        const amt = parseFloat(t.amount || 0);
-        if (t.type === 'income') {
-            income += amt;
-            if (balances[t.paymentMethod] !== undefined) balances[t.paymentMethod] += amt;
-            incomeByCat[t.category] = (incomeByCat[t.category] || 0) + amt;
-        } else if (t.type === 'expense') {
-            expense += amt;
-            if (balances[t.paymentMethod] !== undefined) balances[t.paymentMethod] -= amt;
-            expenseByCat[t.category] = (expenseByCat[t.category] || 0) + amt;
-        } else if (t.type === 'transfer') {
-            if (balances[t.paymentMethod] !== undefined) balances[t.paymentMethod] -= amt;
-            if (balances[t.transferTo] !== undefined) balances[t.transferTo] += amt;
-        }
-    });
-
-    const cashGroup = [], bankGroup = [], creditGroup = [];
-    Object.entries(balances).forEach(([name, amount]) => {
-        if (name.toLowerCase().includes('credit')) creditGroup.push({name, amount});
-        else if (name.toLowerCase().includes('bank') || name.includes('SBI') || name.includes('HDFC')) bankGroup.push({name, amount});
-        else cashGroup.push({name, amount});
-    });
-
-    let totalLiquid = 0;
-    ['Cash', 'HDFC Bank', 'SBI Bank'].forEach(acc => totalLiquid += (balances[acc] || 0));
-    const totalLoanPending = state.loans.reduce((sum, l) => sum + (l.total - l.paid), 0);
-
-    return { income, expense, balance: totalLiquid, cashGroup, bankGroup, creditGroup, totalLoanPending, incomeByCat, expenseByCat };
-};
-
-const Icons = {
-    PieChart: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>`,
-    GraduationCap: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`,
-    History: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>`,
-    Plus: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
-    Settings: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`,
-    Trash: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`,
-    Edit: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`
-};
-
-const renderDonut = (income, expense) => {
-    const total = income + expense;
-    if (total === 0) return `<div class="text-center text-slate-400 text-xs py-8">No Data</div>`;
-    const r = 40, c = 2 * Math.PI * r;
-    const incDash = ((income / total) * c);
-    return `
-    <div class="relative w-48 h-48 mx-auto flex items-center justify-center">
-        <svg width="100%" height="100%" viewBox="0 0 100 100" class="transform -rotate-90">
-            <circle cx="50" cy="50" r="${r}" fill="transparent" stroke="#fca5a5" stroke-width="12" stroke-dasharray="${c} ${c}" class="cursor-pointer hover:opacity-90" onclick="app.setChartView('expense')"></circle>
-            <circle cx="50" cy="50" r="${r}" fill="transparent" stroke="#6ee7b7" stroke-width="12" stroke-dasharray="${incDash} ${c}" class="cursor-pointer hover:opacity-90" onclick="app.setChartView('income')"></circle>
-        </svg>
-        <div class="absolute text-center pointer-events-none">
-            <p class="text-xs text-slate-400">Total</p>
-            <p class="font-bold text-slate-800 dark:text-white text-lg">₹${total.toLocaleString()}</p>
-        </div>
-    </div>`;
-};
-
-// --- Application Logic ---
-const appLogic = {
-    setTab: (tab) => { state.activeTab = tab; render(); },
-    
-    toggleDarkMode: () => {
-        state.darkMode = !state.darkMode;
-        localStorage.setItem('wallet_dark_mode', state.darkMode);
-        render();
-    },
-
-    setMode: (mode) => {
-        state.mode = mode;
-        if(mode === 'local') appLogic.loadLocal();
-        else render();
-    },
-    
-    setChartView: (view) => { state.chartView = view; render(); },
-
-    handleLogin: async (e) => {
-        e.preventDefault();
-        try {
-            await signInWithEmailAndPassword(auth, state.login.email, state.login.password);
-        } catch (err) {
-            state.login.error = err.message + " (Check 'Authorized Domains' in Firebase if hosted)";
-            render();
-        }
-    },
-
-    loadLocal: () => {
-        try {
-            state.transactions = JSON.parse(localStorage.getItem('my_wallet_data') || '[]');
-            state.students = JSON.parse(localStorage.getItem('my_wallet_students') || '[]');
-            state.loans = JSON.parse(localStorage.getItem('my_wallet_loans') || '[]');
-            state.openingBalances = JSON.parse(localStorage.getItem('my_wallet_opening_balances') || '{}');
-            state.loading = false;
-            render();
-        } catch(e) { console.error(e); }
-    },
-
-    saveTx: async (e) => {
-        e.preventDefault();
-        if(state.form.isSubmitting) return;
-        state.form.isSubmitting = true;
-        render();
-        
-        const f = state.form;
-        let desc = f.description;
-        let cat = f.category;
-        let feeMonth = f.feeMonth;
-        
-        if (cat === 'Tuition Fees' && f.type === 'income') {
-            const mStr = f.selectedMonths.join(', ') || feeMonth;
-            feeMonth = mStr;
-            desc = `Tuition: ${f.studentName} (${mStr})`;
-        }
-        
-        if (cat === 'Loan/EMI' && f.selectedLoanId && f.type === 'expense') {
-            const l = state.loans.find(x => x.id === f.selectedLoanId);
-            if(l) desc = `EMI: ${l.name}`;
-        }
-
-        const txData = {
-            amount: parseFloat(f.amount), description: desc, category: cat, type: f.type,
-            paymentMethod: f.paymentMethod, transferTo: f.type === 'transfer' ? f.transferTo : null,
-            date: f.date, dateStr: new Date(f.date).toLocaleDateString(),
-            studentName: (cat === 'Tuition Fees') ? f.studentName : null,
-            feeMonth: (cat === 'Tuition Fees') ? feeMonth : null,
-            createdAt: new Date().toISOString()
-        };
-
-        try {
-            if (state.mode === 'cloud') {
-                if (f.editingTxId) await updateDoc(doc(db, 'users', state.user.uid, 'transactions', f.editingTxId), txData);
-                else await addDoc(collection(db, 'users', state.user.uid, 'transactions'), txData);
-            } else {
-                if (f.editingTxId) {
-                    state.transactions = state.transactions.map(t => t.id === f.editingTxId ? { ...t, ...txData } : t);
-                } else {
-                    state.transactions = [{ ...txData, id: Date.now().toString() }, ...state.transactions];
-                }
-                saveLocalData();
-            }
-            state.form.amount = ''; state.form.description = ''; state.form.selectedMonths = []; 
-            state.form.editingTxId = null;
-            if(f.type !== 'income') state.activeTab = 'dashboard';
-        } catch(err) { alert("Save failed: " + err.message); }
-        
-        state.form.isSubmitting = false;
-        render();
-    },
-
-    editTx: (id) => {
-        const t = state.transactions.find(x => x.id === id);
-        if(!t) return;
-        state.form.editingTxId = id;
-        state.form.amount = t.amount;
-        state.form.description = t.description;
-        state.form.type = t.type;
-        state.form.category = t.category;
-        state.form.date = t.date;
-        state.form.studentName = t.studentName || '';
-        state.form.paymentMethod = t.paymentMethod;
-        state.activeTab = 'add';
-        render();
-    },
-
-    deleteItem: async (col, id) => {
-        if(!confirm('Delete this item?')) return;
-        if(state.mode === 'cloud') {
-            await deleteDoc(doc(db, 'users', state.user.uid, col, id));
+        if (user) {
+            // Attempt Cloud Connection
+            state.mode = 'cloud';
+            login.classList.add('hidden');
+            appLayout.classList.remove('hidden');
+            setupRealtimeListeners(user.uid);
+        } else if (state.mode === 'local') {
+            // Offline Mode
+            login.classList.add('hidden');
+            appLayout.classList.remove('hidden');
+            loadLocalData();
         } else {
-            if(col === 'transactions') state.transactions = state.transactions.filter(t => t.id !== id);
-            if(col === 'students') state.students = state.students.filter(s => s.id !== id);
-            if(col === 'loans') state.loans = state.loans.filter(l => l.id !== id);
-            saveLocalData();
-            render();
+            // Logged Out
+            login.classList.remove('hidden');
+            appLayout.classList.add('hidden');
         }
-    },
+        
+        // Hide loader
+        if(loader) setTimeout(() => loader.classList.add('hidden'), 500);
+        
+        renderNav();
+        renderHeader();
+    }, (error) => {
+        // Fallback to login screen on auth error
+        document.getElementById('loading-overlay').classList.add('hidden');
+        document.getElementById('login-view').classList.remove('hidden');
+    });
 
-    saveStudent: async (e) => {
-        e.preventDefault();
-        const f = state.form;
-        const sData = {
-            name: f.sName, parentName: f.sParent, phone: f.sPhone,
-            joinDate: f.sJoin, leaveDate: f.sLeave || null,
-            monthlyFee: parseFloat(f.sFee), std: f.sStd, medium: f.sMedium,
-            school: f.sSchool, board: f.sBoard
-        };
+    // Event Listeners
+    document.getElementById('login-form').addEventListener('submit', handleLogin);
+    document.getElementById('btn-offline-mode').addEventListener('click', switchToLocalMode);
 
-        try {
-            if(state.mode === 'cloud') {
-                if(f.editingStudentId) await updateDoc(doc(db, 'users', state.user.uid, 'students', f.editingStudentId), sData);
-                else await addDoc(collection(db, 'users', state.user.uid, 'students'), { ...sData, createdAt: new Date().toISOString() });
-            } else {
-                if(f.editingStudentId) state.students = state.students.map(s => s.id === f.editingStudentId ? {...s, ...sData} : s);
-                else state.students = [...state.students, { ...sData, id: Date.now().toString() }];
-                saveLocalData();
-            }
-            f.editingStudentId = null; f.sName = ''; f.sPhone = ''; 
-            alert("Student Saved");
-            render();
-        } catch(err) { alert("Error saving student"); }
-    },
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        if(state.mode === 'cloud') signOut(auth);
+        else window.location.reload();
+    });
 
-    prepEditStudent: (id) => {
-        const s = state.students.find(x => x.id === id);
-        if(!s) return;
-        const f = state.form;
-        f.editingStudentId = id;
-        f.sName = s.name; f.sParent = s.parentName; f.sPhone = s.phone;
-        f.sJoin = s.joinDate; f.sLeave = s.leaveDate; f.sFee = s.monthlyFee;
-        f.sStd = s.std; f.sMedium = s.medium; f.sSchool = s.school; f.sBoard = s.board;
-        state.viewingStudent = null;
-        render();
-        const formEl = document.getElementById('student-form');
-        if(formEl) formEl.scrollIntoView({ behavior: 'smooth' });
+    // Theme Toggle
+    const toggleTheme = () => {
+        document.documentElement.classList.toggle('dark');
+        localStorage.setItem('wallet_dark_mode', document.documentElement.classList.contains('dark'));
+    };
+    document.getElementById('btn-desktop-theme').addEventListener('click', toggleTheme);
+    document.getElementById('btn-mobile-theme').addEventListener('click', toggleTheme);
+});
+
+// --- 4. DATA HANDLING ---
+
+const switchToLocalMode = () => {
+    console.warn("Switching to Local Mode");
+    state.mode = 'local';
+    state.user = { uid: 'offline', email: 'local@device' };
+    
+    document.getElementById('login-view').classList.add('hidden');
+    document.getElementById('app-layout').classList.remove('hidden');
+    
+    const statusEl = document.getElementById('app-status');
+    if(statusEl) statusEl.innerText = "Offline (Local)";
+    
+    loadLocalData();
+    renderNav();
+    renderHeader();
+    renderCurrentTab();
+};
+
+const handlePermissionError = (err) => {
+    console.warn("Caught Permission/Cloud Error:", err);
+    // Only switch if we are currently trying to be in cloud mode
+    if (state.mode === 'cloud') {
+        alert("Cloud access denied (Permission Denied). Switching to Offline Mode automatically.");
+        switchToLocalMode();
     }
 };
 
-window.app = appLogic;
+const setupRealtimeListeners = (uid) => {
+    // Transactions
+    onSnapshot(query(collection(db, 'artifacts', APP_ID, 'users', uid, 'transactions')), (snap) => {
+        state.transactions = snap.docs.map(doc => ({...doc.data(), id: doc.id})).sort((a,b) => new Date(b.date) - new Date(a.date));
+        renderCurrentTab();
+        renderHeader();
+    }, handlePermissionError);
 
-// --- Rendering ---
-function render() {
-    const root = document.getElementById('root');
-    const { darkMode, activeTab, user, loading, mode } = state;
-    if (darkMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
+    // Students
+    onSnapshot(query(collection(db, 'artifacts', APP_ID, 'users', uid, 'students')), (snap) => {
+        state.students = snap.docs.map(doc => ({...doc.data(), id: doc.id}));
+        if(state.activeTab === 'students' || state.activeTab === 'add') renderCurrentTab();
+    }, handlePermissionError);
 
-    // 1. Loading State
-    if (loading) {
-        // We do NOT overwrite root.innerHTML here to keep the error listener and fallback button alive in index.html
-        return;
+    // Listen for Opening Balances
+    onSnapshot(doc(db, 'artifacts', APP_ID, 'users', uid, 'settings', 'opening_balances'), (snap) => {
+        if(snap.exists()) state.openingBalances = snap.data();
+        renderHeader();
+        if(state.activeTab === 'dashboard') renderCurrentTab();
+    }, handlePermissionError);
+};
+
+const loadLocalData = () => {
+    try {
+        state.transactions = JSON.parse(localStorage.getItem('wallet_tx') || '[]');
+        state.students = JSON.parse(localStorage.getItem('wallet_st') || '[]');
+        state.loans = JSON.parse(localStorage.getItem('wallet_loans') || '[]');
+        state.openingBalances = JSON.parse(localStorage.getItem('wallet_opening_balances') || '{}');
+    } catch(e) { console.error("Local Load Error", e); }
+    renderCurrentTab();
+    renderHeader();
+};
+
+const saveLocalData = () => {
+    if(state.mode !== 'local') return;
+    localStorage.setItem('wallet_tx', JSON.stringify(state.transactions));
+    localStorage.setItem('wallet_st', JSON.stringify(state.students));
+    localStorage.setItem('wallet_loans', JSON.stringify(state.loans));
+    localStorage.setItem('wallet_opening_balances', JSON.stringify(state.openingBalances));
+    renderCurrentTab();
+    renderHeader();
+};
+
+const handleLogin = async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const errBox = document.getElementById('auth-error');
+    
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+    } catch (err) {
+        errBox.textContent = "Login failed: " + err.message;
+        errBox.classList.remove('hidden');
     }
+};
 
-    // 2. Auth State (Cloud Mode)
-    if (mode === 'cloud' && !user) {
-        root.innerHTML = `
-        <div class="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6">
-            <div class="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-xl max-w-sm w-full border border-slate-200 dark:border-slate-700">
-                <h2 class="text-2xl font-bold text-center dark:text-white mb-6">Wallet Login</h2>
-                ${firebaseError ? `<div class="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm"><b>Firebase Init Failed:</b> ${firebaseError}</div>` : ''}
-                ${state.login.error ? `<div class="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">${state.login.error}</div>` : ''}
-                <form id="loginForm" class="space-y-4">
-                    <input type="email" id="email" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:text-white" placeholder="Email" value="${state.login.email}">
-                    <input type="password" id="password" class="w-full p-3 border rounded-lg dark:bg-slate-700 dark:text-white" placeholder="Password" value="${state.login.password}">
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold">Login</button>
-                </form>
-                <button id="btnSwitchLocal" class="w-full mt-6 text-slate-400 text-sm hover:text-slate-600">Switch to Offline Mode</button>
-            </div>
-        </div>`;
-        attachEvents();
-        return;
-    }
+// --- 5. RENDER FUNCTIONS ---
+const renderNav = () => {
+    const tabs = [
+        { id: 'dashboard', label: 'Home', icon: 'PieChart' },
+        { id: 'students', label: 'Students', icon: 'GraduationCap' },
+        { id: 'add', label: 'Add', icon: 'Plus' },
+        { id: 'history', label: 'History', icon: 'History' },
+        { id: 'settings', label: 'Settings', icon: 'Settings' }
+    ];
 
-    // 3. Main App Layout
-    const summary = calculateSummary();
-    const navItem = (id, icon, label) => `
-        <button class="nav-btn flex flex-col items-center gap-1 ${activeTab === id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}" data-tab="${id}">
-            <div class="w-6 h-6 pointer-events-none">${icon}</div>
-            <span class="text-[10px] font-medium pointer-events-none">${label}</span>
-        </button>`;
+    const desktopHTML = tabs.map(t => `
+        <button onclick="window.switchTab('${t.id}')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition ${state.activeTab === t.id ? 'bg-indigo-50 text-indigo-600' : 'text-slate-500 hover:bg-slate-50'}">
+            ${getIcon(t.icon)} ${t.label}
+        </button>
+    `).join('');
+    document.getElementById('desktop-nav').innerHTML = desktopHTML;
 
-    let mainContent = '';
-    if (activeTab === 'dashboard') {
-        const recentTx = state.transactions.slice(0, 8).map(t => `
-            <div class="flex justify-between items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-700">
-                <div><p class="font-bold dark:text-white">${t.description}</p><p class="text-xs text-slate-500">${t.dateStr} • ${t.category}</p></div>
-                <div class="flex items-center gap-2">
-                    <p class="font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}">${t.type === 'income' ? '+' : '-'} ${t.amount}</p>
-                    <button class="text-blue-400 p-1 btn-edit-tx" data-id="${t.id}">${Icons.Edit}</button>
-                    <button class="text-red-400 p-1 btn-del-tx" data-id="${t.id}">${Icons.Trash}</button>
-                </div>
-            </div>`).join('');
-        const incomeList = Object.entries(summary.incomeByCat || {}).map(([k,v]) => `<div class="flex justify-between text-xs mb-1"><span class="dark:text-slate-300">${k}</span><span class="font-bold dark:text-white">₹${v}</span></div>`).join('');
-        mainContent = `
-            <div class="space-y-6 animate-fade-in pb-24">
-                <div class="grid grid-cols-2 gap-4">
-                    ${summary.cashGroup.map(a => `<div class="bg-emerald-500 text-white p-5 rounded-2xl shadow-lg"> <p class="text-xs font-bold uppercase opacity-70">Cash</p> <p class="text-2xl font-bold">₹${a.amount}</p> </div>`).join('')}
-                    ${summary.bankGroup.map(a => `<div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border dark:border-slate-700 shadow-sm"> <p class="text-xs font-bold uppercase text-slate-400">${a.name}</p> <p class="text-2xl font-bold dark:text-white">₹${a.amount}</p> </div>`).join('')}
-                </div>
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold flex items-center gap-2 dark:text-white">Analytics</h3>
-                        <div class="flex gap-2">
-                            <button class="text-xs bg-emerald-100 text-emerald-600 px-2 py-1 rounded" onclick="app.setChartView('income')">Inc</button>
-                            <button class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded" onclick="app.setChartView('expense')">Exp</button>
-                        </div>
-                    </div>
-                    ${state.chartView === 'overview' ? renderDonut(summary.income, summary.expense) : (state.chartView === 'income' ? incomeList : '<div class="text-center text-xs">Expense Details...</div>')}
-                </div>
-                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
-                     <div class="p-4 border-b dark:border-slate-700 font-bold text-sm dark:text-white">Recent Transactions</div>
-                     <div class="divide-y divide-slate-100 dark:divide-slate-700">${recentTx}</div>
-                </div>
+    const mobileHTML = tabs.map(t => {
+        if(t.id === 'add') return `
+            <div class="relative -top-5">
+                <button onclick="window.switchTab('add')" class="w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700">
+                    ${getIcon('Plus')}
+                </button>
             </div>`;
-    } 
-    else if (activeTab === 'students') {
-        const studentList = state.students.map(s => {
-            const fin = getStudentFinancials(s);
-            let color = 'text-gray-500';
-            if (fin.status === 'Overdue') color = 'text-red-600';
-            else if (fin.status === 'Paid') color = 'text-emerald-600';
-            return `<div class="bg-white dark:bg-slate-700 border dark:border-slate-600 p-4 rounded-xl mb-3 cursor-pointer btn-view-student" data-id="${s.id}"><div class="flex justify-between"><div><p class="font-bold dark:text-white">${s.name}</p><p class="text-xs text-slate-500">${s.parentName || ''}</p></div><p class="text-xs font-bold ${color}">${fin.status}</p></div></div>`;
-        }).join('');
-        mainContent = `
-        <div class="space-y-6 pb-24">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">${studentList}</div>
-            <div id="student-form" class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border dark:border-slate-700">
-                <h3 class="font-bold mb-4 dark:text-white">${state.form.editingStudentId ? 'Edit Student' : 'Add Student'}</h3>
-                <form id="studentForm" class="space-y-3">
-                    <input placeholder="Name" class="w-full p-3 bg-slate-50 dark:bg-slate-700 dark:text-white rounded-xl" value="${state.form.sName}" onchange="state.form.sName = this.value">
-                    <input placeholder="Fee Amount" type="number" class="w-full p-3 bg-slate-50 dark:bg-slate-700 dark:text-white rounded-xl" value="${state.form.sFee}" onchange="state.form.sFee = this.value">
-                    <input type="date" class="w-full p-3 bg-slate-50 dark:bg-slate-700 dark:text-white rounded-xl" value="${state.form.sJoin}" onchange="state.form.sJoin = this.value">
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Save Student</button>
-                    ${state.form.editingStudentId ? `<button type="button" id="cancelEditStudent" class="w-full bg-slate-200 text-slate-700 py-3 rounded-xl font-bold mt-2">Cancel</button>` : ''}
-                </form>
-            </div>
-        </div>`;
-    }
-    else if (activeTab === 'add') {
-        const f = state.form;
-        mainContent = `
-        <div class="pb-24 animate-fade-in flex justify-center">
-            <div class="w-full max-w-lg bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-lg border dark:border-slate-700">
-                <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-2xl mb-6">
-                    ${['expense','income','transfer'].map(t => `<button class="flex-1 py-3 rounded-xl text-sm font-bold capitalize ${f.type === t ? 'bg-white dark:bg-slate-600 shadow-sm' : 'text-slate-500'}" onclick="state.form.type='${t}'; render()">${t}</button>`).join('')}
+        return `
+            <button onclick="window.switchTab('${t.id}')" class="flex flex-col items-center gap-1 ${state.activeTab === t.id ? 'text-indigo-600' : 'text-slate-400'}">
+                ${getIcon(t.icon)}
+                <span class="text-[10px] font-medium">${t.label}</span>
+            </button>`;
+    }).join('');
+    document.getElementById('mobile-nav').innerHTML = mobileHTML;
+};
+
+// Global Switch Tab function
+window.switchTab = (tabId) => {
+    state.activeTab = tabId;
+    renderNav();
+    renderHeader();
+    renderCurrentTab();
+    window.scrollTo(0, 0);
+};
+
+const renderHeader = () => {
+    document.getElementById('page-title').textContent = state.activeTab;
+    
+    let total = 0;
+    ACCOUNTS.forEach(a => total += (state.openingBalances[a] || 0));
+    state.transactions.forEach(t => {
+        const val = parseFloat(t.amount);
+        if(t.type === 'income') total += val;
+        if(t.type === 'expense') total -= val;
+    });
+
+    const fmt = `₹${total.toLocaleString()}`;
+    document.getElementById('header-total-balance').textContent = fmt;
+    document.getElementById('mobile-total-balance').textContent = fmt;
+};
+
+const renderCurrentTab = () => {
+    const main = document.getElementById('main-content');
+    main.innerHTML = '';
+
+    if (state.activeTab === 'dashboard') {
+        const income = state.transactions.filter(t => t.type === 'income').reduce((a,b)=>a+b.amount, 0);
+        const expense = state.transactions.filter(t => t.type === 'expense').reduce((a,b)=>a+b.amount, 0);
+
+        main.innerHTML = `
+            <div class="space-y-6 animate-fade-in">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-emerald-500 text-white p-5 rounded-2xl shadow-lg">
+                        <p class="text-xs font-bold uppercase opacity-80">Income</p>
+                        <p class="text-2xl font-bold">₹${income.toLocaleString()}</p>
+                    </div>
+                    <div class="bg-rose-500 text-white p-5 rounded-2xl shadow-lg">
+                        <p class="text-xs font-bold uppercase opacity-80">Expense</p>
+                        <p class="text-2xl font-bold">₹${expense.toLocaleString()}</p>
+                    </div>
                 </div>
-                <form id="txForm" class="space-y-4">
-                    ${f.type === 'income' ? `<div><label class="text-xs font-bold text-slate-400 block mb-2">CATEGORY</label><div class="flex gap-2 flex-wrap">${['Tuition Fees', 'Salary', 'Other'].map(c => `<button type="button" class="px-4 py-2 rounded-full text-xs font-bold border ${f.category === c ? 'bg-indigo-600 text-white' : 'dark:text-white'}" onclick="state.form.category='${c}'; render()">${c}</button>`).join('')}</div></div>` : ''}
-                    ${f.category === 'Tuition Fees' && f.type === 'income' ? `<input list="st-list" placeholder="Student Name" class="w-full p-3 rounded-xl border dark:bg-slate-700 dark:text-white" value="${f.studentName}" onchange="state.form.studentName = this.value"><datalist id="st-list">${state.students.map(s => `<option value="${s.name}">`).join('')}</datalist>` : `<input placeholder="Description" class="w-full p-4 rounded-2xl border dark:bg-slate-700 dark:text-white" value="${f.description}" onchange="state.form.description = this.value">`}
-                    <div class="grid grid-cols-2 gap-4"><input type="number" placeholder="0.00" class="w-full p-4 rounded-2xl border font-bold text-lg dark:bg-slate-700 dark:text-white" value="${f.amount}" onchange="state.form.amount = this.value"><input type="date" class="w-full p-4 rounded-2xl border dark:bg-slate-700 dark:text-white" value="${f.date}" onchange="state.form.date = this.value"></div>
-                    <div class="grid grid-cols-3 gap-2">${ACCOUNTS.map(a => `<button type="button" class="py-3 px-1 rounded-xl text-[10px] font-bold border ${f.paymentMethod === a ? 'bg-indigo-600 text-white' : 'dark:text-white dark:bg-slate-700'}" onclick="state.form.paymentMethod='${a}'; render()">${a}</button>`).join('')}</div>
-                    <button type="submit" class="w-full bg-slate-900 dark:bg-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg ${f.isSubmitting ? 'btn-loading' : ''}">${f.isSubmitting ? 'Saving...' : 'Save Transaction'}</button>
-                </form>
-            </div>
-        </div>`;
-    }
-    else if (activeTab === 'settings') {
-        mainContent = `
-        <div class="pb-24 p-4 space-y-6">
-            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm">
-                <h3 class="font-bold dark:text-white mb-4">Actions</h3>
-                <button onclick="window.app.setMode('local'); state.user=null; render()" class="w-full border p-3 rounded-xl mb-2 dark:text-white">Logout / Offline Mode</button>
-                <button onclick="app.toggleDarkMode()" class="w-full border p-3 rounded-xl dark:text-white">Toggle Dark Mode</button>
-            </div>
-        </div>`;
-    }
 
-    root.innerHTML = `
-        <div class="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 pb-safe-bottom">
-            <header class="md:hidden bg-indigo-600 text-white pt-8 pb-10 px-6 rounded-b-[2rem] shadow-lg mb-6 sticky top-0 z-10">
-                <div class="flex justify-between items-center mb-4"><div><h1 class="text-xl font-bold">My Wallet</h1></div><button onclick="app.toggleDarkMode()" class="p-2 bg-white/20 rounded-full">${state.darkMode ? Icons.PieChart : Icons.PieChart}</button></div>
-                <div class="text-center"><p class="text-indigo-200 text-xs font-bold uppercase mb-1">Total Balance</p><h2 class="text-4xl font-extrabold tracking-tight">₹${summary.balance.toLocaleString()}</h2></div>
-            </header>
-            <main class="px-4 max-w-4xl mx-auto">${mainContent}</main>
-            <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t dark:border-slate-800 z-50 px-6 py-2 pb-safe-bottom flex justify-between items-center shadow-lg">
-                ${navItem('dashboard', Icons.PieChart, 'Home')} ${navItem('students', Icons.GraduationCap, 'Students')}
-                <div class="relative -top-5"><button class="w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 active:scale-95 nav-btn" data-tab="add"><div class="w-8 h-8 pointer-events-none">${Icons.Plus}</div></button></div>
-                ${navItem('history', Icons.History, 'History')} ${navItem('settings', Icons.Settings, 'Settings')}
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+                    <div class="p-4 border-b dark:border-slate-700 font-bold">Recent Transactions</div>
+                    <div class="divide-y dark:divide-slate-700">
+                        ${state.transactions.slice(0, 5).map(t => `
+                            <div class="flex justify-between items-center p-4">
+                                <div>
+                                    <p class="font-bold dark:text-white">${t.description}</p>
+                                    <p class="text-xs text-slate-500">${t.date}</p>
+                                </div>
+                                <p class="font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}">
+                                    ${t.type === 'income' ? '+' : '-'} ${t.amount}
+                                </p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
             </div>
-            ${state.viewingStudent ? renderStudentModal(state.viewingStudent) : ''}
-        </div>`;
-    attachEvents();
-}
-
-function renderStudentModal(student) {
-    const fin = getStudentFinancials(student);
-    return `
-    <div class="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onclick="state.viewingStudent=null; render()">
-        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl overflow-hidden" onclick="event.stopPropagation()">
-            <div class="bg-indigo-600 p-6 text-white relative">
-                <h2 class="text-2xl font-bold">${student.name}</h2>
-                <p>${student.std} • ${student.school || 'No School'}</p>
-                <div class="mt-4 p-4 bg-white/10 rounded-xl flex justify-between"><span>Pending: ₹${fin.pending}</span><span class="font-bold">${fin.status}</span></div>
+        `;
+    } else if (state.activeTab === 'add') {
+        main.innerHTML = `
+            <div class="flex justify-center animate-fade-in">
+                <div class="w-full max-w-md bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4 dark:text-white">Add Transaction</h3>
+                    <form id="tx-form" class="space-y-4">
+                        <select id="tx-type" class="w-full p-3 rounded-xl border bg-slate-50 dark:bg-slate-700 dark:text-white">
+                            <option value="expense">Expense</option>
+                            <option value="income">Income</option>
+                        </select>
+                        <input id="tx-desc" placeholder="Description" class="w-full p-3 rounded-xl border bg-slate-50 dark:bg-slate-700 dark:text-white" required />
+                        <input id="tx-amount" type="number" placeholder="Amount" class="w-full p-3 rounded-xl border bg-slate-50 dark:bg-slate-700 dark:text-white" required />
+                        <input id="tx-date" type="date" value="${new Date().toISOString().split('T')[0]}" class="w-full p-3 rounded-xl border bg-slate-50 dark:bg-slate-700 dark:text-white" required />
+                        <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Save</button>
+                    </form>
+                </div>
             </div>
-            <div class="p-6 grid grid-cols-2 gap-3">
-                 <button class="bg-indigo-600 text-white py-3 rounded-xl font-bold" onclick="state.form.studentName='${student.name}'; state.form.category='Tuition Fees'; state.form.type='income'; state.form.amount='${student.monthlyFee}'; state.activeTab='add'; state.viewingStudent=null; render()">Pay Fee</button>
-                 <button class="bg-slate-200 text-slate-800 py-3 rounded-xl font-bold" onclick="app.prepEditStudent('${student.id}')">Edit</button>
-            </div>
-        </div>
-    </div>`;
-}
-
-function attachEvents() {
-    document.querySelectorAll('.nav-btn').forEach(btn => btn.onclick = () => appLogic.setTab(btn.dataset.tab));
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.onsubmit = appLogic.handleLogin;
-        document.getElementById('email').oninput = (e) => state.login.email = e.target.value;
-        document.getElementById('password').oninput = (e) => state.login.password = e.target.value;
-        document.getElementById('btnSwitchLocal').onclick = () => { appLogic.setMode('local'); };
-    }
-    const txForm = document.getElementById('txForm'); if (txForm) txForm.onsubmit = appLogic.saveTx;
-    const stForm = document.getElementById('studentForm'); if (stForm) stForm.onsubmit = appLogic.saveStudent;
-    const cancelEditSt = document.getElementById('cancelEditStudent'); if (cancelEditSt) cancelEditSt.onclick = () => { state.form.editingStudentId = null; state.form.sName = ''; render(); };
-    document.querySelectorAll('.btn-edit-tx').forEach(btn => btn.onclick = () => appLogic.editTx(btn.dataset.id));
-    document.querySelectorAll('.btn-del-tx').forEach(btn => btn.onclick = () => appLogic.deleteItem('transactions', btn.dataset.id));
-    document.querySelectorAll('.btn-view-student').forEach(btn => btn.onclick = () => { state.viewingStudent = state.students.find(s => s.id === btn.dataset.id); render(); });
-}
-
-// --- Initialization ---
-try {
-    if(auth) {
-        onAuthStateChanged(auth, (u) => {
-            state.user = u;
-            if (u) {
-                const uid = u.uid;
-                onSnapshot(query(collection(db, 'users', uid, 'transactions')), (snap) => { state.transactions = snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a,b) => new Date(b.date) - new Date(a.date)); state.loading = false; render(); });
-                onSnapshot(query(collection(db, 'users', uid, 'students')), (snap) => { state.students = snap.docs.map(d => ({ ...d.data(), id: d.id })); render(); });
-                onSnapshot(query(collection(db, 'users', uid, 'loans')), (snap) => { state.loans = snap.docs.map(d => ({ ...d.data(), id: d.id })); render(); });
-                onSnapshot(doc(db, 'users', uid, 'settings', 'opening_balances'), (snap) => { if(snap.exists()) state.openingBalances = snap.data(); render(); });
+        `;
+        document.getElementById('tx-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const type = document.getElementById('tx-type').value;
+            const desc = document.getElementById('tx-desc').value;
+            const amount = parseFloat(document.getElementById('tx-amount').value);
+            const date = document.getElementById('tx-date').value;
+            
+            const txData = { type, description: desc, amount, date, createdAt: new Date().toISOString() };
+            
+            if(state.mode === 'cloud') {
+                await addDoc(collection(db, 'artifacts', APP_ID, 'users', state.user.uid, 'transactions'), txData);
             } else {
-                state.loading = false; render();
+                state.transactions.unshift({...txData, id: Date.now().toString()});
+                saveLocalData();
+            }
+            alert("Saved!");
+            window.switchTab('dashboard');
+        });
+    } else if (state.activeTab === 'students') {
+        main.innerHTML = `
+            <div class="space-y-4 animate-fade-in">
+                 <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-lg dark:text-white">Students</h3>
+                    <button id="add-student-btn" class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-sm font-bold">Add New</button>
+                </div>
+                <div class="grid grid-cols-1 gap-3">
+                    ${state.students.map(s => `
+                        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border shadow-sm dark:border-slate-700">
+                            <p class="font-bold dark:text-white">${s.name}</p>
+                            <p class="text-xs text-slate-500">Parent: ${s.parent}</p>
+                            <p class="text-xs text-slate-400">Fee: ₹${s.fee}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        document.getElementById('add-student-btn').addEventListener('click', () => {
+            const name = prompt("Student Name");
+            const parent = prompt("Parent Name");
+            const fee = prompt("Monthly Fee");
+            if(name && fee) {
+                const sData = { name, parent, fee: parseFloat(fee) };
+                if(state.mode === 'cloud') addDoc(collection(db, 'artifacts', APP_ID, 'users', state.user.uid, 'students'), sData);
+                else { state.students.push(sData); saveLocalData(); }
             }
         });
     } else {
-        // Fallback if auth didn't init
-        state.loading = false; render();
+        main.innerHTML = `<div class="p-8 text-center text-slate-400">Section Under Construction</div>`;
     }
-} catch (e) {
-    console.error("Auth Listener Error:", e);
-    state.loading = false; render();
-}
+};
