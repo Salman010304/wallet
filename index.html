@@ -895,11 +895,14 @@
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    ) : type !== 'transfer' && <input value={description} onChange={e => setDescription(e.target.value)} className="w-full p-4 rounded-2xl border bg-slate-50" placeholder="Description" />}
+                                                    ) : type !== 'transfer' && <input value={description} onChange={e => setDescription(e.target.value)} className="w-full p-4 rounded-2xl border bg-slate-50 dark:bg-slate-800 dark:text-white" placeholder="Description" />}
                                                 </>
                                             )}
 
-                                            <div className="grid grid-cols-2 gap-4"><input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-4 rounded-2xl border font-bold text-lg" placeholder="0.00" /><input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-4 rounded-2xl border" /></div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-4 rounded-2xl border font-bold text-lg bg-white dark:bg-slate-800 dark:text-white" placeholder="0.00" />
+                                                <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-4 rounded-2xl border bg-white dark:bg-slate-800 dark:text-white" />
+                                            </div>
                                             
                                             {type !== 'transfer' && (
                                                 <div className="grid grid-cols-3 gap-2">
