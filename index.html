@@ -84,6 +84,12 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
             z-index: 10;
         }
+        .clickable-card {
+            cursor: pointer;
+        }
+        .clickable-card:active {
+            transform: scale(0.98) perspective(1000px) rotateX(2deg);
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-slate-900 dark:text-slate-100">
@@ -349,6 +355,8 @@
             const [showChartModal, setShowChartModal] = useState(false);
             const [show3DModal, setShow3DModal] = useState(false);
             const [threeDView, setThreeDView] = useState('overview'); // 'overview', 'income', 'expense'
+            const [threeDCategory, setThreeDCategory] = useState(null);
+            const [threeDMonth, setThreeDMonth] = useState(new Date().toISOString().slice(0, 7)); // Default to current month YYYY-MM
             
             const [viewingStudent, setViewingStudent] = useState(null);
             const [editingTx, setEditingTx] = useState(null);
@@ -616,12 +624,28 @@
                 return { income, expense, balance: totalLiquidBalance, accounts: balances, incomeData, expenseData, cashGroup, bankGroup, creditGroup, totalLoanPending };
             }, [transactions, openingBalances, loans]);
 
+            // --- 3D Derived Data with Month Filter ---
+            const threeDTransactions = useMemo(() => {
+                if (!threeDMonth) return transactions; 
+                return transactions.filter(t => t.date.startsWith(threeDMonth));
+            }, [transactions, threeDMonth]);
+
+            const threeDSummary = useMemo(() => {
+                let income = 0, expense = 0;
+                threeDTransactions.forEach(t => {
+                    const amt = parseFloat(t.amount || 0);
+                    if (t.type === 'income') income += amt;
+                    else if (t.type === 'expense') expense += amt;
+                });
+                return { income, expense };
+            }, [threeDTransactions]);
+
             // --- Breakdown Logic for 3D View ---
             const breakdownData = useMemo(() => {
                 if (threeDView === 'overview') return null;
                 
                 const targetType = threeDView; // 'income' or 'expense'
-                const relevantTx = transactions.filter(t => t.type === targetType);
+                const relevantTx = threeDTransactions.filter(t => t.type === targetType);
                 const total = relevantTx.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
                 
                 const byCategory = {};
@@ -642,7 +666,14 @@
                 }).sort((a, b) => b.value - a.value);
                 
                 return { total, data };
-            }, [threeDView, transactions, expenseCategories]);
+            }, [threeDView, threeDTransactions, expenseCategories]);
+
+            // --- Filtered Transaction Data for 3D Modal ---
+            const threeDFilteredTransactions = useMemo(() => {
+                if(!threeDCategory || threeDView === 'overview') return [];
+                return threeDTransactions.filter(t => t.type === threeDView && t.category === threeDCategory)
+                                   .sort((a, b) => new Date(b.date) - new Date(a.date));
+            }, [threeDView, threeDCategory, threeDTransactions]);
 
             const tStats = (() => {
                 const totalStudents = students.length;
@@ -754,7 +785,7 @@
                         <header className="hidden md:flex justify-between items-center p-8 bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 sticky top-0 z-10 shadow-sm">
                             <h2 className="text-2xl font-bold capitalize">{activeTab}</h2>
                             <div className="flex items-center gap-4">
-                                <button onClick={() => { setThreeDView('overview'); setShow3DModal(true); }} className="p-2 rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 transition font-bold text-xs flex items-center gap-1 px-3"><Icons.Box className="w-4 h-4" /> 3D</button>
+                                <button onClick={() => { setThreeDView('overview'); setShow3DModal(true); setThreeDCategory(null); }} className="p-2 rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 transition font-bold text-xs flex items-center gap-1 px-3"><Icons.Box className="w-4 h-4" /> 3D</button>
                                 <button onClick={() => setShowChartModal(true)} className="p-2 rounded-full bg-indigo-50 text-indigo-500 hover:bg-indigo-100 transition"><Icons.PieChart className="w-5 h-5" /></button>
                                 <button onClick={fixCorruptedDataInternal} className="p-2 rounded-full bg-red-50 text-red-500 hover:bg-red-100 transition"><Icons.Tool className="w-5 h-5" /></button>
                                 <button onClick={toggleDarkMode} className="p-2 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 transition hover:scale-110">{darkMode ? <Icons.Sun className="w-5 h-5" /> : <Icons.Moon className="w-5 h-5" />}</button>
@@ -767,7 +798,7 @@
                             <div className="flex justify-between items-center mb-4">
                                 <div><h1 className="text-xl font-bold">My Wallet</h1><p className="text-indigo-200 text-xs">Mobile Manager</p></div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => { setThreeDView('overview'); setShow3DModal(true); }} className="p-2 rounded-full bg-white/20 backdrop-blur-sm active:bg-white/30 transition text-xs font-bold px-3 flex items-center gap-1">3D</button>
+                                    <button onClick={() => { setThreeDView('overview'); setShow3DModal(true); setThreeDCategory(null); }} className="p-2 rounded-full bg-white/20 backdrop-blur-sm active:bg-white/30 transition text-xs font-bold px-3 flex items-center gap-1">3D</button>
                                     <button onClick={toggleDarkMode} className="p-2 rounded-full bg-white/20 backdrop-blur-sm active:bg-white/30 transition">{darkMode ? <Icons.Sun className="w-5 h-5" /> : <Icons.Moon className="w-5 h-5" />}</button>
                                 </div>
                             </div>
@@ -1148,64 +1179,114 @@
 
                     {/* 3D Chart Modal */}
                     {show3DModal && (
-                        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => { setShow3DModal(false); setThreeDView('overview'); }}>
+                        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-fade-in" onClick={() => { setShow3DModal(false); setThreeDView('overview'); setThreeDCategory(null); }}>
                             <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
                                 <div className="bg-indigo-600 p-4 text-white flex justify-between items-center">
                                     <div className="flex items-center gap-2">
-                                        {threeDView !== 'overview' && (
-                                            <button onClick={() => setThreeDView('overview')} className="hover:bg-white/20 p-1 rounded-full"><Icons.ArrowLeft className="w-5 h-5" /></button>
+                                        {(threeDView !== 'overview' || threeDCategory) && (
+                                            <button 
+                                                onClick={() => {
+                                                    if (threeDCategory) {
+                                                        setThreeDCategory(null);
+                                                    } else {
+                                                        setThreeDView('overview');
+                                                    }
+                                                }} 
+                                                className="hover:bg-white/20 p-1 rounded-full"
+                                            >
+                                                <Icons.ArrowLeft className="w-5 h-5" />
+                                            </button>
                                         )}
                                         <h3 className="font-bold text-lg flex items-center gap-2">
-                                            {threeDView === 'overview' && <><Icons.Box className="w-5 h-5" /> 3D Analytics</>}
-                                            {threeDView === 'income' && 'Income Breakdown'}
-                                            {threeDView === 'expense' && 'Expense Breakdown'}
+                                            {threeDCategory ? `${threeDCategory} Transactions` : 
+                                             threeDView === 'overview' ? <><Icons.Box className="w-5 h-5" /> 3D Analytics</> :
+                                             `${threeDView.charAt(0).toUpperCase() + threeDView.slice(1)} Breakdown`}
                                         </h3>
                                     </div>
-                                    <button onClick={() => { setShow3DModal(false); setThreeDView('overview'); }} className="bg-white/20 p-2 rounded-full hover:bg-white/30"><Icons.X className="w-5 h-5" /></button>
+                                    <button onClick={() => { setShow3DModal(false); setThreeDView('overview'); setThreeDCategory(null); }} className="bg-white/20 p-2 rounded-full hover:bg-white/30"><Icons.X className="w-5 h-5" /></button>
                                 </div>
                                 
                                 <div className="p-6 overflow-y-auto flex-1">
+                                    {/* Monthly Filter */}
+                                    <div className="flex justify-center mb-4">
+                                        <input 
+                                            type="month" 
+                                            value={threeDMonth} 
+                                            onChange={(e) => setThreeDMonth(e.target.value)}
+                                            className="bg-slate-100 dark:bg-slate-700 border-none rounded-lg p-2 text-sm font-bold text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500"
+                                        />
+                                    </div>
+
                                     {threeDView === 'overview' ? (
                                         <>
-                                            <ThreeDPieChart income={summary.income} expense={summary.expense} onSliceClick={setThreeDView} />
+                                            <ThreeDPieChart income={threeDSummary.income} expense={threeDSummary.expense} onSliceClick={setThreeDView} />
                                             <div className="mt-4 flex justify-around text-center">
-                                                <div><p className="text-xs text-slate-400 uppercase">Income</p><p className="text-xl font-bold text-emerald-500">₹{summary.income.toLocaleString()}</p></div>
-                                                <div><p className="text-xs text-slate-400 uppercase">Expense</p><p className="text-xl font-bold text-rose-500">₹{summary.expense.toLocaleString()}</p></div>
+                                                <div><p className="text-xs text-slate-400 uppercase">Income</p><p className="text-xl font-bold text-emerald-500">₹{threeDSummary.income.toLocaleString()}</p></div>
+                                                <div><p className="text-xs text-slate-400 uppercase">Expense</p><p className="text-xl font-bold text-rose-500">₹{threeDSummary.expense.toLocaleString()}</p></div>
                                             </div>
                                             <p className="text-center text-[10px] text-slate-400 mt-4">Click on the 3D chart slices to view details</p>
                                         </>
                                     ) : (
                                         <div className="space-y-4 animate-fade-in">
-                                            <div className="text-center mb-4">
-                                                <p className="text-xs text-slate-400 uppercase">Total {threeDView}</p>
-                                                <p className={`text-3xl font-extrabold ${threeDView === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                    ₹{breakdownData.total.toLocaleString()}
-                                                </p>
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-1 gap-3">
-                                                {breakdownData.data.map((item, idx) => (
-                                                    <div key={idx} className="card-3d bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-100 dark:border-slate-600 flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-2xl">{item.icon}</span>
-                                                            <div>
-                                                                <p className="font-bold text-sm dark:text-white">{item.name}</p>
-                                                                <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-600 rounded-full mt-1 overflow-hidden">
-                                                                    <div 
-                                                                        className={`h-full rounded-full ${threeDView === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`} 
-                                                                        style={{ width: `${item.percent}%` }}
-                                                                    ></div>
+                                            {/* Category List View */}
+                                            {!threeDCategory && (
+                                                <>
+                                                    <div className="text-center mb-4">
+                                                        <p className="text-xs text-slate-400 uppercase">Total {threeDView}</p>
+                                                        <p className={`text-3xl font-extrabold ${threeDView === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                            ₹{breakdownData.total.toLocaleString()}
+                                                        </p>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-1 gap-3">
+                                                        {breakdownData.data.map((item, idx) => (
+                                                            <div 
+                                                                key={idx} 
+                                                                className="card-3d clickable-card bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-100 dark:border-slate-600 flex items-center justify-between"
+                                                                onClick={() => setThreeDCategory(item.name)}
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="text-2xl">{item.icon}</span>
+                                                                    <div>
+                                                                        <p className="font-bold text-sm dark:text-white">{item.name}</p>
+                                                                        <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-600 rounded-full mt-1 overflow-hidden">
+                                                                            <div 
+                                                                                className={`h-full rounded-full ${threeDView === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}`} 
+                                                                                style={{ width: `${item.percent}%` }}
+                                                                            ></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="font-bold text-sm dark:text-white">₹{item.value.toLocaleString()}</p>
+                                                                    <p className="text-[10px] text-slate-400">{item.percent.toFixed(1)}%</p>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="font-bold text-sm dark:text-white">₹{item.value.toLocaleString()}</p>
-                                                            <p className="text-[10px] text-slate-400">{item.percent.toFixed(1)}%</p>
-                                                        </div>
+                                                        ))}
+                                                        {breakdownData.data.length === 0 && <p className="text-center text-slate-400 text-sm py-10">No records found for this month.</p>}
                                                     </div>
-                                                ))}
-                                                {breakdownData.data.length === 0 && <p className="text-center text-slate-400 text-sm py-10">No records found.</p>}
-                                            </div>
+                                                </>
+                                            )}
+
+                                            {/* Filtered Transaction List View */}
+                                            {threeDCategory && (
+                                                <div className="grid grid-cols-1 gap-3 animate-fade-in">
+                                                    {threeDFilteredTransactions.map((tx, idx) => (
+                                                        <div key={tx.id} className="card-3d bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-100 dark:border-slate-600">
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <p className="font-bold text-sm dark:text-white line-clamp-1">{tx.description || tx.studentName}</p>
+                                                                    <p className="text-[10px] text-slate-400 mt-1">{tx.dateStr} • {tx.paymentMethod}</p>
+                                                                </div>
+                                                                <p className={`font-bold ${threeDView === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                    {threeDView === 'income' ? '+' : '-'} ₹{tx.amount.toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {threeDFilteredTransactions.length === 0 && <p className="text-center text-slate-400 text-sm py-10">No transactions found.</p>}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
