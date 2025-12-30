@@ -1394,9 +1394,15 @@
                                     {threeDView === 'overview' ? (
                                         <>
                                             <ThreeDPieChart income={threeDSummary.income} expense={threeDSummary.expense} onSliceClick={setThreeDView} />
-                                            <div className="mt-6 grid grid-cols-2 gap-4">
-                                                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center"><p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Income</p><p className="text-2xl font-black text-emerald-600">₹{threeDSummary.income.toLocaleString()}</p></div>
-                                                <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100 text-center"><p className="text-[10px] text-rose-500 font-bold uppercase tracking-wider">Expense</p><p className="text-2xl font-black text-rose-600">₹{threeDSummary.expense.toLocaleString()}</p></div>
+                                            <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
+                                                <div className="p-3 sm:p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center overflow-hidden">
+                                                    <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Income</p>
+                                                    <p className="text-lg sm:text-2xl font-black text-emerald-600 truncate" title={threeDSummary.income.toLocaleString()}>₹{threeDSummary.income.toLocaleString()}</p>
+                                                </div>
+                                                <div className="p-3 sm:p-4 bg-rose-50 rounded-2xl border border-rose-100 text-center overflow-hidden">
+                                                    <p className="text-[10px] text-rose-500 font-bold uppercase tracking-wider">Expense</p>
+                                                    <p className="text-lg sm:text-2xl font-black text-rose-600 truncate" title={threeDSummary.expense.toLocaleString()}>₹{threeDSummary.expense.toLocaleString()}</p>
+                                                </div>
                                             </div>
                                             <p className="text-center text-[10px] text-slate-400 mt-6 font-medium">Tap on the 3D chart slices to explore</p>
                                         </>
@@ -1407,7 +1413,7 @@
                                                 <>
                                                     <div className="text-center mb-6">
                                                         <p className="text-xs text-slate-400 uppercase tracking-widest font-bold">Total {threeDView}</p>
-                                                        <p className={`text-4xl font-black tracking-tighter ${threeDView === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                        <p className={`text-3xl sm:text-4xl font-black tracking-tighter truncate ${threeDView === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                             ₹{breakdownData.total.toLocaleString()}
                                                         </p>
                                                     </div>
@@ -1446,16 +1452,9 @@
                                             {threeDCategory && (
                                                 <div className="grid grid-cols-1 gap-3 animate-fade-in">
                                                     {threeDFilteredTransactions.map((tx, idx) => (
-                                                        <div key={tx.id} className="card-3d bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-100 dark:border-slate-600">
-                                                            <div className="flex justify-between items-start">
-                                                                <div>
-                                                                    <p className="font-bold text-sm dark:text-white line-clamp-1">{tx.description || tx.studentName}</p>
-                                                                    <p className="text-[10px] text-slate-400 mt-1">{tx.dateStr} • {tx.paymentMethod}</p>
-                                                                </div>
-                                                                <p className={`font-bold ${threeDView === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                    {threeDView === 'income' ? '+' : '-'} ₹{tx.amount.toLocaleString()}
-                                                                </p>
-                                                            </div>
+                                                        <div key={tx.id} className="card-3d bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-100 dark:border-slate-600 shadow-sm flex justify-between items-center">
+                                                            <div><p className="font-bold text-sm text-slate-800 dark:text-white line-clamp-1">{tx.description || tx.studentName}</p><p className="text-[10px] text-slate-400 mt-0.5 font-medium">{tx.dateStr} • {tx.paymentMethod}</p></div>
+                                                            <p className={`font-bold text-sm ${threeDView === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>{threeDView === 'income' ? '+' : '-'} ₹{tx.amount.toLocaleString()}</p>
                                                         </div>
                                                     ))}
                                                     {threeDFilteredTransactions.length === 0 && <p className="text-center text-slate-400 text-sm py-10">No transactions found.</p>}
