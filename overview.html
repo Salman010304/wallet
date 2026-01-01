@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Financial Overview – 3D</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Tailwind (same style family as your app) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body { background: linear-gradient(135deg,#eef2ff,#fdf4ff); }
+    .orb {
+      width: 160px; height: 160px; border-radius: 50%;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; color:white;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%{ transform:translateY(0);}
+      50%{ transform:translateY(-10px);}
+      100%{ transform:translateY(0);}
+    }
+    .flow-bar {
+      height: 10px;
+      border-radius: 999px;
+      animation: grow 1s ease-out forwards;
+    }
+    @keyframes grow {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-800">
+
+  <!-- HEADER -->
+  <div class="p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">📊 Financial Overview – 3D</h1>
+    <a href="index.html" class="text-indigo-600 font-medium">← Back to Wallet</a>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
+    <div class="bg-white rounded-xl p-4 shadow">
+      <p class="text-xs text-gray-500">Income</p>
+      <p id="income" class="font-bold text-lg">₹0</p>
+    </div>
+    <div class="bg-white rounded-xl p-4 shadow">
+      <p class="text-xs text-gray-500">Expenses</p>
+      <p id="expense" class="font-bold text-lg">₹0</p>
+    </div>
+    <div class="bg-white rounded-xl p-4 shadow">
+      <p class="text-xs text-gray-500">Debt</p>
+      <p id="debt" class="font-bold text-lg">₹0</p>
+    </div>
+    <div class="bg-white rounded-xl p-4 shadow">
+      <p class="text-xs text-gray-500">Investments</p>
+      <p id="investment" class="font-bold text-lg">₹0</p>
+    </div>
+  </div>
+
+  <!-- FREE CREDIT ORB -->
+  <div class="flex flex-col items-center mt-6">
+    <div id="creditOrb" class="orb bg-green-500 shadow-xl">
+      ₹0
+    </div>
+    <p id="creditLabel" class="mt-3 font-semibold"></p>
+  </div>
+
+  <!-- FLOW SECTION -->
+  <div class="p-4 mt-6">
+    <h2 class="font-semibold mb-3">💸 Money Flow</h2>
+
+    <div class="mb-2">
+      <p class="text-xs">Expenses</p>
+      <div class="bg-gray-200 rounded-full">
+        <div id="flowExpense" class="flow-bar bg-rose-400"></div>
+      </div>
+    </div>
+
+    <div class="mb-2">
+      <p class="text-xs">Debt</p>
+      <div class="bg-gray-200 rounded-full">
+        <div id="flowDebt" class="flow-bar bg-orange-400"></div>
+      </div>
+    </div>
+
+    <div>
+      <p class="text-xs">Investment</p>
+      <div class="bg-gray-200 rounded-full">
+        <div id="flowInvestment" class="flow-bar bg-indigo-400"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRESSURE -->
+  <div class="p-4">
+    <h2 class="font-semibold mb-2">🚨 Financial Pressure</h2>
+    <div class="bg-gray-200 rounded-xl h-4 overflow-hidden">
+      <div id="pressureBar" class="h-full bg-green-500"></div>
+    </div>
+    <p id="pressureText" class="text-sm mt-2"></p>
+  </div>
+
+  <script type="module" src="./js/overview.js"></script>
+</body>
+</html>
