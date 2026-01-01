@@ -895,13 +895,14 @@
                     <div className="hidden md:flex flex-col md:fixed md:left-0 md:top-0 md:h-screen md:w-64 glass-card border-r border-white/20 dark:border-slate-700/50 p-6 z-20">
                         <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-8 tracking-tight">My Wallet Pro</h1>
                         <nav className="space-y-2 flex-1">
-                            {['dashboard', 'students', 'history', 'add', 'settings'].map(tab => (
+                            {['['dashboard','students','history','overview','add','settings']'].map(tab => (
                                 <button key={tab} onClick={() => setActiveTab(tab)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-200 capitalize group ${activeTab === tab ? 'bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 shadow-sm dark:from-slate-800 dark:to-slate-800 dark:text-indigo-400' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200'}`}>
                                     <span className={`p-1 rounded-lg transition-colors ${activeTab === tab ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-400' : 'group-hover:bg-white group-hover:text-slate-600 dark:group-hover:bg-slate-700'}`}>
                                         {tab === 'dashboard' && <Icons.PieChart className="w-5 h-5" />}
                                         {tab === 'students' && <Icons.GraduationCap className="w-5 h-5" />}
                                         {tab === 'history' && <Icons.History className="w-5 h-5" />}
                                         {tab === 'add' && <Icons.Plus className="w-5 h-5" />}
+                                        {tab === 'overview' && <Icons.TrendingUp className="w-5 h-5" />}
                                         {tab === 'settings' && <Icons.Building2 className="w-5 h-5" />}
                                     </span>
                                     {tab}
@@ -918,7 +919,8 @@
 
                     {/* Mobile Bottom Navigation */}
                     <div className="md:hidden fixed bottom-0 left-0 right-0 glass-card border-t border-white/20 dark:border-slate-700 z-50 px-6 py-2 pb-safe-bottom flex justify-between items-center shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
-                        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 transition ${activeTab === 'dashboard' ? 'text-indigo-600 scale-110' : 'text-slate-400'}`}>
+                        <button onClick={() => {if (tab === 'overview') {window.location.href = 'overview.html';} else {setActiveTab(tab);}}}
+                         className={`flex flex-col items-center gap-1 transition ${activeTab === 'dashboard' ? 'text-indigo-600 scale-110' : 'text-slate-400'}`}>
                             <Icons.PieChart className="w-6 h-6" />
                             <span className="text-[10px] font-bold">Home</span>
                         </button>
@@ -1474,4 +1476,5 @@
         root.render(<App />);
     </script>
 </body>
+
 </html>
