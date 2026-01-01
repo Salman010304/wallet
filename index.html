@@ -939,6 +939,14 @@
                             <Icons.History className="w-6 h-6" />
                             <span className="text-[10px] font-bold">History</span>
                         </button>
+                        <button
+                           onClick={() => window.location.href = 'overview.html'}
+                                 className="flex flex-col items-center gap-1 text-slate-400 transition"
+>
+  <Icons.TrendingUp className="w-6 h-6" />
+  <span className="text-[10px] font-bold">Overview</span>
+</button>
+
                         <button onClick={() => setActiveTab('settings')} className={`flex flex-col items-center gap-1 transition ${activeTab === 'settings' ? 'text-indigo-600 scale-110' : 'text-slate-400'}`}>
                             <Icons.Building2 className="w-6 h-6" />
                             <span className="text-[10px] font-bold">Settings</span>
