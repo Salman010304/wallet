@@ -65,13 +65,13 @@
 
         /* Glassmorphism Cards */
         .glass-card {
-            background: rgba(255, 255, 255, 0.75);
-            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.6);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
         }
         .dark .glass-card {
-            background: rgba(15, 23, 42, 0.75);
+            background: rgba(30, 41, 59, 0.85);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
@@ -111,33 +111,21 @@
         .clickable-card { cursor: pointer; }
         .clickable-card:active { transform: scale(0.98) perspective(1000px) rotateX(2deg); }
 
-        /* Fixed Background */
-        .fixed-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -2;
-            background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070&auto=format&fit=crop'); /* Professional Finance Office Background */
+        /* Background & Overlay */
+        .app-background {
+            background-image: url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=2301&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
-            background-repeat: no-repeat;
+            background-attachment: fixed;
         }
-        
-        /* Overlay for Readability */
         .app-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -1;
-            background: linear-gradient(135deg, rgba(240, 249, 255, 0.80) 0%, rgba(224, 231, 255, 0.80) 100%);
-            backdrop-filter: blur(3px);
+            background: linear-gradient(135deg, rgba(240, 249, 255, 0.95) 0%, rgba(224, 231, 255, 0.95) 100%);
+            backdrop-filter: blur(5px);
+            height: 100%;
+            width: 100%;
         }
         .dark .app-overlay {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.85) 100%);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 41, 59, 0.96) 100%);
         }
 
         /* Gradients */
@@ -146,13 +134,9 @@
         .dark .text-gradient { background-image: linear-gradient(to right, #818cf8, #c084fc); }
     </style>
 </head>
-<body class="text-slate-900 transition-colors duration-300 dark:text-slate-100 min-h-screen overflow-hidden">
+<body class="app-background text-slate-900 transition-colors duration-300 dark:text-slate-100 h-screen w-screen overflow-hidden">
     
-    <!-- Background Layers -->
-    <div class="fixed-bg"></div>
-    <div class="app-overlay"></div>
-    
-    <div id="root" class="h-full w-full relative z-0">
+    <div id="root" class="h-full w-full">
         <div style="display:flex; justify-content:center; align-items:center; height:100vh; color:#6366f1; font-weight:bold; font-size:1.2rem;">
             <div class="animate-bounce">🎨 Loading Finance Manager...</div>
         </div>
@@ -204,7 +188,12 @@
             ArrowLeftRight: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>,
             Box: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
             ArrowLeft: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>,
-            BookOpen: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            BookOpen: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
+            Image: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>,
+            Palette: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>,
+            AlignLeft: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="18" y2="18"/></svg>,
+            AlignCenter: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="17" x2="7" y1="12" y2="12"/><line x1="19" x2="5" y1="18" y2="18"/></svg>,
+            AlignRight: (p) => <svg {...p} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="21" x2="3" y1="6" y2="6"/><line x1="21" x2="9" y1="12" y2="12"/><line x1="21" x2="7" y1="18" y2="18"/></svg>
         };
 
         // --- Firebase Config ---
@@ -242,6 +231,26 @@
         ];
 
         const DEFAULT_MSG = "સલામ/નમસ્તે {parent},\n\nનુરાની કોચિંગ ક્લાસીસ તરફથી રિમાઇન્ડર:\n\nવિદ્યાર્થીનું નામ: {name}\nબાકી ફી: ₹{amount}\nબાકી મહિના: {months}\n\nકૃપા કરીને ફી જમા કરાવવા વિનંતી.\nઆભાર.";
+
+        const DEFAULT_RECEIPT_SETTINGS = {
+            instituteName: "NURANI COACHING CLASSES",
+            tagline: "Excellence in Education",
+            title: "FEE PAYMENT RECEIPT",
+            footerText: "Thank you for choosing Nurani Coaching Classes.\nThis is a computer-generated receipt.",
+            signatoryName: "Mohammad Salman",
+            signatoryLabel: "Authorized Signatory",
+            
+            logo: null, // Base64 string
+            logoSize: 20, // width in mm
+            logoAlignment: 'center', // 'left', 'center', 'right'
+            
+            headerBgColor: "#4f46e5", // Primary Color (Indigo 600)
+            headerTextColor: "#ffffff",
+            accentColor: "#4f46e5",
+            
+            headerAlignment: 'center',
+            showFooter: true
+        };
 
         // --- Helper Components ---
         const PaymentIcon = ({ method }) => {
@@ -451,6 +460,9 @@
             const [ledgers, setLedgers] = useState([]);
             const [openingBalances, setOpeningBalances] = useState({});
             
+            // Receipt Customization State
+            const [receiptSettings, setReceiptSettings] = useState(DEFAULT_RECEIPT_SETTINGS);
+            
             const [activeTab, setActiveTab] = useState('dashboard');
             const [mode, setMode] = useState('cloud'); 
             const [darkMode, setDarkMode] = useState(false);
@@ -535,6 +547,12 @@
                 }
                 const storedCats = localStorage.getItem('wallet_categories');
                 if(storedCats) setExpenseCategories(JSON.parse(storedCats));
+
+                // Load Receipt Settings
+                const storedReceiptSettings = localStorage.getItem('wallet_receipt_settings');
+                if (storedReceiptSettings) {
+                    setReceiptSettings({...DEFAULT_RECEIPT_SETTINGS, ...JSON.parse(storedReceiptSettings)});
+                }
 
                 // PWA Install Prompt Listener
                 window.addEventListener('beforeinstallprompt', (e) => {
@@ -862,10 +880,237 @@
             const handleQuickExpenseClick = (categoryObj) => { if(isEditMode) { const newName = prompt("Rename category:", categoryObj.name); if(newName === null) return; const newIcon = prompt("Change icon (Emoji):", categoryObj.icon); if(newIcon === null) return; if (newName) { const updated = expenseCategories.map(c => c.name === categoryObj.name ? { ...c, name: newName, icon: newIcon || c.icon } : c); setExpenseCategories(updated); localStorage.setItem('wallet_categories', JSON.stringify(updated)); } return; } setType('expense'); setCategory(categoryObj.name); if (!editingTx && description === '') { setDescription(categoryObj.name); } if(!editingTx) { setAmount(''); } };
             const handleDeleteCategory = (catName) => { if(confirm(`Delete category "${catName}"?`)) { const updated = expenseCategories.filter(c => c.name !== catName); setExpenseCategories(updated); localStorage.setItem('wallet_categories', JSON.stringify(updated)); if(updated.length === 0) setIsEditMode(false); } };
             const handleAddCategory = () => { const newCat = prompt("Enter new category name:"); if(!newCat) return; const newIcon = prompt("Enter category icon (Emoji):", "✨"); const updated = [...expenseCategories, { name: newCat, icon: newIcon || '✨' }]; setExpenseCategories(updated); localStorage.setItem('wallet_categories', JSON.stringify(updated)); };
-            const generatePDFReceipt = (transaction) => { try { if (!window.jspdf || !window.jspdf.jsPDF) { alert("PDF Tool is loading..."); return; } const { jsPDF } = window.jspdf; const doc = new jsPDF(); const primaryColor = [67, 56, 202]; const lightGray = [241, 245, 249]; const darkText = [30, 41, 59]; doc.setFillColor(...primaryColor); doc.rect(0, 0, 210, 50, 'F'); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(26); doc.text("NURANI COACHING CLASSES", 105, 25, null, null, "center"); doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.text("Excellence in Education", 105, 35, null, null, "center"); doc.setTextColor(...darkText); doc.setFontSize(16); doc.setFont("helvetica", "bold"); doc.text("FEE PAYMENT RECEIPT", 105, 65, null, null, "center"); const txDate = new Date(transaction.date); const year = txDate.getFullYear(); const yearTransactions = transactions.filter(t => { if (t.category !== 'Tuition Fees' || t.type !== 'income') return false; const tDate = new Date(t.date); return tDate.getFullYear() === year; }).sort((a, b) => new Date(a.date) - new Date(b.date) || (a.createdAt || '').localeCompare(b.createdAt || '')); const index = yearTransactions.findIndex(t => t.id === transaction.id); const count = index !== -1 ? index + 1 : yearTransactions.length + 1; const serialNum = count.toString().padStart(4, '0'); const receiptNo = `NCC/${year}/${serialNum}`; const dateStr = txDate.toLocaleDateString('en-GB'); doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.text(`Receipt No: ${receiptNo}`, 190, 60, null, null, "right"); doc.text(`Date: ${dateStr}`, 190, 65, null, null, "right"); const studentData = students.find(s => s.name === transaction.studentName) || {}; doc.setFillColor(...lightGray); doc.roundedRect(15, 75, 180, 35, 3, 3, 'F'); doc.setFontSize(10); doc.setTextColor(100, 116, 139); doc.text("STUDENT DETAILS", 20, 83); doc.setTextColor(...darkText); doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.text("Name:", 20, 92); doc.setFont("helvetica", "normal"); doc.text(transaction.studentName || "N/A", 50, 92); doc.setFont("helvetica", "bold"); doc.text("Parent:", 110, 92); doc.setFont("helvetica", "normal"); doc.text(studentData.parentName || "-", 135, 92); doc.setFont("helvetica", "bold"); doc.text("Class:", 20, 102); doc.setFont("helvetica", "normal"); const stdText = studentData.std ? `${studentData.std} (${studentData.medium || ''})` : "-"; doc.text(stdText, 50, 102); doc.setFont("helvetica", "bold"); doc.text("Board:", 110, 102); doc.setFont("helvetica", "normal"); doc.text(studentData.board || "GSEB", 135, 102); let y = 125; doc.setFillColor(...primaryColor); doc.rect(15, y, 180, 10, 'F'); doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text("DESCRIPTION", 25, y + 7); doc.text("FEE MONTH", 90, y + 7); doc.text("MODE", 140, y + 7); doc.text("AMOUNT", 185, y + 7, null, null, "right"); y += 18; doc.setTextColor(...darkText); doc.setFont("helvetica", "normal"); doc.setFontSize(10); const desc = transaction.category === 'Tuition Fees' ? 'Tuition Fee Payment' : transaction.description; const month = transaction.feeMonth || "-"; doc.text(desc.substring(0, 30), 25, y); doc.text(month, 90, y); doc.text(transaction.paymentMethod || "Cash", 140, y); doc.text(`Rs. ${transaction.amount}/-`, 185, y, null, null, "right"); doc.setDrawColor(226, 232, 240); doc.line(15, y + 5, 195, y + 5); y += 20; doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.text("TOTAL PAID:", 140, y); doc.setTextColor(...primaryColor); doc.setFontSize(16); doc.text(`Rs. ${transaction.amount}`, 190, y, null, null, "right"); const footerY = 250; doc.setTextColor(...darkText); doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.text("For, Nurani Coaching Classes", 190, footerY - 20, null, null, "right"); doc.setFont("helvetica", "normal"); doc.text("Sd/-", 190, footerY - 10, null, null, "right"); doc.setFont("helvetica", "bold"); doc.text("Mohammad Salman", 190, footerY - 4, null, null, "right"); doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); doc.text("Authorized Signatory", 190, footerY + 1, null, null, "right"); doc.setFillColor(248, 250, 252); doc.rect(0, 270, 210, 27, 'F'); doc.setTextColor(100, 116, 139); doc.setFontSize(9); doc.text("Thank you for choosing Nurani Coaching Classes.", 105, 280, null, null, "center"); doc.text("This is a computer-generated receipt.", 105, 285, null, null, "center"); const safeReceiptNo = receiptNo.replace(/\//g, '-'); doc.save(`Receipt_${transaction.studentName}_${safeReceiptNo}.pdf`); } catch (e) { console.error(e); alert("Error generating receipt. Please try again."); } };
-            const sendReminder = (student, pendingAmount, missingMonths) => { const monthsText = missingMonths && missingMonths.length > 0 ? missingMonths.join(", ") : "N/A"; let msg = reminderMsg.replace('{parent}', student.parentName || 'Parent').replace('{name}', student.name).replace('{amount}', pendingAmount).replace('{months}', monthsText); let phone = student.phone ? student.phone.replace(/\D/g, '') : ''; if (phone.length === 10) phone = '91' + phone; window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank'); };
-            const sendReceiptWhatsApp = (tx, student) => { let phone = student.phone ? student.phone.replace(/\D/g, '') : ''; if (phone.length === 10) phone = '91' + phone; const msg = `*Payment Receipt - Nurani Coaching Classes*\n\nStudent: ${student.name}\nParent: ${student.parentName || 'Parent'}\nAmount: ₹${tx.amount}\nMonth: ${tx.feeMonth || 'N/A'}\nDate: ${tx.date}\nMethod: ${tx.paymentMethod}\n\nThank you!`; window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank'); };
-            const fixCorruptedDataInternal = () => { if(confirm("Repair data?")) { const savedSt = localStorage.getItem('my_wallet_students'); if(savedSt) { const parsed = JSON.parse(savedSt); const clean = Array.isArray(parsed) ? parsed.filter(s => s && s.name) : []; localStorage.setItem('my_wallet_students', JSON.stringify(clean)); window.location.reload(); } } };
+            const handleLogoUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // Max size check: 500KB
+                if (file.size > 500 * 1024) {
+                    alert("Logo size must be under 500KB");
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const base64 = event.target.result;
+                    setReceiptSettings({...receiptSettings, logo: base64});
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const saveReceiptSettings = () => {
+                localStorage.setItem('wallet_receipt_settings', JSON.stringify(receiptSettings));
+                alert("Settings Saved!");
+            };
+
+            const resetReceiptSettings = () => {
+                if(confirm("Reset receipt settings to default?")) {
+                    setReceiptSettings(DEFAULT_RECEIPT_SETTINGS);
+                    localStorage.removeItem('wallet_receipt_settings');
+                }
+            };
+            
+            const generatePDFReceipt = (transaction, isPreview = false) => {
+                try {
+                    if (!window.jspdf || !window.jspdf.jsPDF) { if(!isPreview) alert("PDF Tool is loading..."); return; }
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+                    const s = receiptSettings;
+                    const pageWidth = doc.internal.pageSize.getWidth();
+
+                    // Colors
+                    const hexToRgb = (hex) => {
+                        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                        return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : [0, 0, 0];
+                    };
+                    const headerBg = hexToRgb(s.headerBgColor);
+                    const headerText = hexToRgb(s.headerTextColor);
+                    const accent = hexToRgb(s.accentColor);
+                    const darkText = [30, 41, 59];
+
+                    // Header Geometry
+                    const headerHeight = 40;
+                    const startY = 15; // Top margin
+
+                    // 1. Draw Header Background
+                    doc.setFillColor(...headerBg);
+                    doc.rect(10, startY, pageWidth - 20, headerHeight, 'F'); // 10mm margin sides
+
+                    // 2. Draw Logo (Left)
+                    if (s.logo) {
+                        const logoSize = 25; // fixed reasonable size for header
+                        doc.addImage(s.logo, 'PNG', 15, startY + (headerHeight - logoSize)/2, logoSize, logoSize);
+                    } else {
+                        // Fallback Vector Icon (White/Text Color)
+                        doc.setFillColor(...headerText);
+                        // Simple cap shape relative to x=25, y=startY+20
+                        doc.triangle(27.5, startY + 10, 20, startY + 15, 35, startY + 15, 'F');
+                        doc.rect(22, startY + 16, 11, 4, 'F');
+                    }
+
+                    // 3. Draw Institute Info (Center)
+                    doc.setTextColor(...headerText);
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(18);
+                    // Calculate center of available space? Or absolute page center? Absolute page center is safer.
+                    doc.text(s.instituteName, pageWidth / 2, startY + 18, { align: "center", maxWidth: 100 });
+
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(10);
+                    doc.text(s.tagline, pageWidth / 2, startY + 28, { align: "center", maxWidth: 100 });
+
+                    // 4. Draw Receipt Meta (Right)
+                    const txDate = new Date(transaction.date);
+                    const year = txDate.getFullYear();
+                    const receiptNo = `NCC/${year}/TX-${transaction.id ? transaction.id.substr(-4).toUpperCase() : '0000'}`;
+                    const dateStr = txDate.toLocaleDateString('en-GB');
+
+                    doc.setFontSize(9);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`Receipt No:`, pageWidth - 15, startY + 15, { align: "right" });
+                    doc.setFont("helvetica", "normal");
+                    doc.text(receiptNo, pageWidth - 15, startY + 20, { align: "right" });
+
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`Date:`, pageWidth - 15, startY + 28, { align: "right" });
+                    doc.setFont("helvetica", "normal");
+                    doc.text(dateStr, pageWidth - 15, startY + 33, { align: "right" });
+
+                    // 5. Receipt Title (Below Header)
+                    doc.setTextColor(...darkText);
+                    doc.setFontSize(14);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(s.title, pageWidth / 2, startY + headerHeight + 15, { align: "center" });
+                    // Add underline
+                    const titleWidth = doc.getTextWidth(s.title);
+                    doc.setDrawColor(...darkText);
+                    doc.setLineWidth(0.5);
+                    doc.line((pageWidth - titleWidth) / 2, startY + headerHeight + 17, (pageWidth + titleWidth) / 2, startY + headerHeight + 17);
+
+                    const bodyStartY = startY + headerHeight + 25;
+                    
+                    // --- STUDENT DETAILS ---
+                    const studentData = students.find(s => s.name === transaction.studentName) || {};
+
+                    doc.setFillColor(241, 245, 249); // light gray
+                    doc.roundedRect(15, bodyStartY, 180, 35, 3, 3, 'F');
+                    
+                    doc.setFontSize(10);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text("STUDENT DETAILS", 20, bodyStartY + 8);
+
+                    doc.setTextColor(...darkText);
+                    doc.setFontSize(11);
+                    doc.setFont("helvetica", "bold");
+                    doc.text("Name:", 20, bodyStartY + 17);
+                    doc.setFont("helvetica", "normal");
+                    doc.text(transaction.studentName || "N/A", 50, bodyStartY + 17);
+
+                    doc.setFont("helvetica", "bold");
+                    doc.text("Parent:", 110, bodyStartY + 17);
+                    doc.setFont("helvetica", "normal");
+                    doc.text(studentData.parentName || "-", 135, bodyStartY + 17);
+
+                    doc.setFont("helvetica", "bold");
+                    doc.text("Class:", 20, bodyStartY + 27);
+                    doc.setFont("helvetica", "normal");
+                    const stdText = studentData.std ? `${studentData.std} (${studentData.medium || ''})` : "-";
+                    doc.text(stdText, 50, bodyStartY + 27);
+
+                    doc.setFont("helvetica", "bold");
+                    doc.text("Board:", 110, bodyStartY + 27);
+                    doc.setFont("helvetica", "normal");
+                    doc.text(studentData.board || "GSEB", 135, bodyStartY + 27);
+
+                    // Table Header
+                    let y = bodyStartY + 45;
+                    doc.setFillColor(...accent);
+                    doc.rect(15, y, 180, 10, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(9);
+                    doc.text("DESCRIPTION", 25, y + 7);
+                    doc.text("FEE MONTH", 90, y + 7);
+                    doc.text("MODE", 140, y + 7);
+                    doc.text("AMOUNT", 185, y + 7, null, null, "right");
+
+                    // Table Row
+                    y += 18;
+                    doc.setTextColor(...darkText);
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(10);
+                    
+                    const desc = transaction.category === 'Tuition Fees' ? 'Tuition Fee Payment' : transaction.description;
+                    const month = transaction.feeMonth || "-";
+                    
+                    doc.text((desc || "").substring(0, 30), 25, y);
+                    doc.text(month, 90, y);
+                    doc.text(transaction.paymentMethod || "Cash", 140, y);
+                    doc.text(`Rs. ${transaction.amount || 0}/-`, 185, y, null, null, "right");
+
+                    doc.setDrawColor(226, 232, 240);
+                    doc.line(15, y + 5, 195, y + 5);
+
+                    // Total
+                    y += 20;
+                    doc.setFontSize(12);
+                    doc.setFont("helvetica", "bold");
+                    doc.text("TOTAL PAID:", 140, y);
+                    doc.setTextColor(...accent);
+                    doc.setFontSize(16);
+                    doc.text(`Rs. ${transaction.amount || 0}`, 190, y, null, null, "right");
+
+                    // Signatory
+                    const footerY = 260;
+                    doc.setTextColor(...darkText);
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(`For, ${s.instituteName}`, 190, footerY - 20, null, null, "right");
+                    
+                    doc.setFont("helvetica", "normal");
+                    doc.text("Sd/-", 190, footerY - 10, null, null, "right");
+                    
+                    doc.setFont("helvetica", "bold");
+                    doc.text(s.signatoryName, 190, footerY - 4, null, null, "right");
+                    
+                    doc.setFontSize(9);
+                    doc.setFont("helvetica", "normal");
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(s.signatoryLabel, 190, footerY + 1, null, null, "right");
+
+                    // Footer
+                    if(s.showFooter) {
+                        doc.setFillColor(248, 250, 252);
+                        doc.rect(0, 275, 210, 22, 'F');
+                        doc.setTextColor(100, 116, 139);
+                        doc.setFontSize(9);
+                        const footerLines = doc.splitTextToSize(s.footerText, 180);
+                        doc.text(footerLines, 105, 285, null, null, "center");
+                    }
+
+                    if(isPreview) {
+                        const blob = doc.output('bloburi');
+                        return blob;
+                    } else {
+                        const safeReceiptNo = receiptNo.replace(/\//g, '-');
+                        doc.save(`Receipt_${transaction.studentName || 'Student'}_${safeReceiptNo}.pdf`);
+                    }
+                } catch (e) {
+                    console.error(e);
+                    if(!isPreview) alert("Error generating receipt. Please try again.");
+                }
+            };
+            const fixCorruptedDataInternal = () => { 
+                if(confirm("Repair data?")) { 
+                    const savedSt = localStorage.getItem('my_wallet_students'); 
+                    if(savedSt) { 
+                        const parsed = JSON.parse(savedSt); 
+                        const clean = Array.isArray(parsed) ? parsed.filter(s => s && s.name) : []; 
+                        localStorage.setItem('my_wallet_students', JSON.stringify(clean)); 
+                        window.location.reload(); 
+                    } 
+                } 
+            };
             const scrollToForm = () => { const formElement = document.getElementById('student-form'); if(formElement) formElement.scrollIntoView({ behavior: 'smooth' }); };
             
             const handleFilteredExport = () => {
@@ -897,7 +1142,7 @@
                 const data = { name: newLedgerName, createdAt: new Date().toISOString() };
                 if(mode === 'cloud') await addDoc(collection(db, 'users', user.uid, 'ledgers'), data);
                 else {
-                    const u = [...ledgers, {...data, id: Date.now().toString()}];
+                    const u = [...ledgers, {...data, id: Date.now().toString() }];
                     setLedgers(u); saveLocalData(null, null, null, null, u);
                 }
                 setNewLedgerName('');
@@ -1032,9 +1277,89 @@
             const handleAccountFilter = (accName) => { setAccountFilter(accName); setActiveTab('history'); };
             const clearAllFilters = () => { setDateFilter({ start: '', end: '' }); setAccountFilter('All'); setCategoryFilter(''); setHistoryStudentFilter(''); };
 
+            // --- Receipt Preview Component (In-Browser Visual Only) ---
+            const ReceiptPreview = () => {
+                const s = receiptSettings;
+                // Dummy Data for preview
+                const dummyDate = new Date().toLocaleDateString('en-GB');
+                const dummyReceiptNo = "NCC/2024/TX-1234";
+
+                return (
+                    <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 text-xs w-full max-w-sm mx-auto font-sans flex flex-col" style={{aspectRatio: '210/297'}}>
+                        {/* Header Box */}
+                        <div className="p-4 rounded-t-lg flex justify-between items-center mb-4" style={{backgroundColor: s.headerBgColor, color: s.headerTextColor}}>
+                            {/* Left: Logo */}
+                            <div className="w-16 h-16 flex-shrink-0 flex items-center justify-center bg-white/10 rounded">
+                                {s.logo ? (
+                                    <img src={s.logo} alt="Logo" className="w-full h-full object-contain" />
+                                ) : (
+                                    <Icons.GraduationCap className="w-10 h-10 text-white" />
+                                )}
+                            </div>
+
+                            {/* Center: Institute Info */}
+                            <div className="flex-1 text-center px-2">
+                                <h2 className="text-sm font-bold uppercase leading-tight">{s.instituteName}</h2>
+                                <p className="text-[10px] opacity-90 mt-1">{s.tagline}</p>
+                            </div>
+
+                            {/* Right: Meta Info */}
+                            <div className="text-right text-[9px] flex-shrink-0 leading-relaxed">
+                                <p><span className="opacity-70">No:</span> {dummyReceiptNo.split('-')[1]}</p>
+                                <p><span className="opacity-70">Date:</span> {dummyDate}</p>
+                            </div>
+                        </div>
+
+                        {/* Receipt Title */}
+                        <div className="text-center mb-6">
+                            <h3 className="font-bold underline uppercase text-sm tracking-wide" style={{color: '#1e293b'}}>{s.title}</h3>
+                        </div>
+                        
+                        {/* ... Rest of preview (Student Details, Table, Footer) ... */}
+                        {/* (I'll keep the rest similar to preserve layout consistency) */}
+                        <div className="bg-slate-50 p-2 rounded border border-slate-100 mb-4">
+                            <p className="font-bold text-slate-400 text-[9px] mb-1">STUDENT DETAILS</p>
+                            <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                <div><span className="font-bold">Name:</span> John Doe</div>
+                                <div><span className="font-bold">Class:</span> 10th (Eng)</div>
+                            </div>
+                        </div>
+                        
+                        <div className="mb-4 flex-1">
+                             <div className="grid grid-cols-4 font-bold text-[9px] p-1 text-white rounded-t" style={{backgroundColor: s.accentColor}}>
+                                <div className="col-span-2">DESCRIPTION</div>
+                                <div className="text-right">MONTH</div>
+                                <div className="text-right">AMOUNT</div>
+                            </div>
+                            <div className="grid grid-cols-4 text-[9px] p-2 border-b border-slate-100">
+                                <div className="col-span-2">Tuition Fee Payment</div>
+                                <div className="text-right">April</div>
+                                <div className="text-right">5000</div>
+                            </div>
+                             <div className="flex justify-between font-bold text-sm mt-2" style={{color: s.accentColor}}>
+                                <span>TOTAL PAID</span>
+                                <span>Rs. 5000</span>
+                            </div>
+                        </div>
+                        
+                         <div className="mt-4 text-right">
+                             <p className="font-bold text-[10px] mb-4">For, {s.instituteName}</p>
+                             <p className="font-bold text-[10px]">{s.signatoryName}</p>
+                             <p className="text-[8px] text-slate-400">{s.signatoryLabel}</p>
+                        </div>
+                         {s.showFooter && (
+                            <div className="mt-4 pt-2 border-t border-slate-100 text-center text-[8px] text-slate-400 whitespace-pre-line">
+                                {s.footerText}
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
             if (loading) return <div className="flex items-center justify-center h-screen bg-slate-50 dark:bg-slate-900"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
 
             if (mode === 'cloud' && !user) {
+                // ... (Keep existing login UI)
                 return (
                     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6 font-sans">
                         <div className="glass-card p-8 rounded-2xl shadow-2xl max-w-sm w-full relative overflow-hidden">
@@ -1086,7 +1411,8 @@
 
                     {/* Mobile Bottom Navigation */}
                     <div className="md:hidden fixed bottom-0 left-0 right-0 glass-card border-t border-white/20 dark:border-slate-700 z-50 px-6 py-2 pb-safe-bottom flex justify-between items-center shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
-                        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 transition ${activeTab === 'dashboard' ? 'text-indigo-600 scale-110' : 'text-slate-400'}`}>
+                        {/* (Keep existing mobile nav) */}
+                         <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 transition ${activeTab === 'dashboard' ? 'text-indigo-600 scale-110' : 'text-slate-400'}`}>
                             <Icons.PieChart className="w-6 h-6" />
                             <span className="text-[10px] font-bold">Home</span>
                         </button>
@@ -1151,6 +1477,7 @@
 
                         <main ref={mainContentRef} className="flex-1 px-4 md:px-8 py-4 md:py-8 max-w-7xl mx-auto w-full overflow-y-auto pb-24 scroll-smooth">
                             {activeTab === 'dashboard' && (
+                                // ... (Keep existing dashboard content)
                                 <div className="space-y-6 animate-fade-in">
                                     {/* Loan Liability */}
                                     {summary.totalLoanPending > 0 && (
@@ -1238,6 +1565,7 @@
                             )}
 
                             {activeTab === 'add' && (
+                                // ... (Keep existing add transaction content)
                                 <div className="flex justify-center animate-fade-in">
                                     <div className="w-full max-w-lg bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-lg border border-slate-100 dark:border-slate-700">
                                         {editingTx && <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl flex justify-between items-center"><p className="text-sm text-yellow-800 dark:text-yellow-400 font-bold">✏️ Editing Transaction</p><button onClick={() => setEditingTx(null)} className="text-xs text-slate-500 dark:text-slate-300">Cancel</button></div>}
@@ -1505,7 +1833,7 @@
                                         <div className="divide-y divide-slate-100 dark:divide-slate-700">
                                             {safeFilteredTransactions.slice(0, showAllTransactions ? undefined : 8).map(t => (
                                                 <div key={t.id} className="flex justify-between items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-700">
-                                                    <div><p className="font-bold dark:text-white">{t.description}</p><p className="text-xs text-slate-500 dark:text-slate-400">{t.dateStr} • {t.category}</p></div>
+                                                    <div><p className="font-bold dark:text-white">{t.description}</p><p className="text-xs text-slate-500">{t.dateStr} • {t.category}</p></div>
                                                     <div className="flex items-center gap-2">
                                                         <p className={`font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>{t.type === 'income' ? '+' : '-'} {t.amount}</p>
                                                         <button onClick={() => { setEditingTx(t); setAmount(t.amount); setDescription(t.description); setStudentName(t.studentName || ''); setFeeMonth(t.feeMonth || ''); if(t.feeMonth && t.feeMonth.includes(',')) setSelectedMonths(t.feeMonth.split(', ')); setType(t.type); setCategory(t.category); setPaymentMethod(t.paymentMethod); if(t.transferTo) setTransferTo(t.transferTo); setDate(t.date); setActiveTab('add'); }} className="text-blue-400 hover:text-blue-600 p-1"><Icons.Pencil className="w-3 h-3" /></button>
@@ -1520,30 +1848,94 @@
 
                             {activeTab === 'settings' && (
                                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 space-y-6 max-w-6xl mx-auto animate-fade-in grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                                    <div className="p-5 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-200 dark:border-slate-600"><h3 className="font-bold text-slate-900 dark:text-white mb-3">Opening Balances</h3><div className="space-y-2">{ACCOUNTS.map(acc => (<div key={acc} className="flex justify-between items-center text-sm"><span className="text-slate-600 dark:text-slate-300">{acc}</span><input type="number" placeholder="0" value={openingBalances[acc] || ''} onChange={(e) => { const val = parseFloat(e.target.value); setOpeningBalances({...openingBalances, [acc]: val}); if(mode==='local') saveLocalData(null, null, null, {...openingBalances, [acc]: val}); }} className="w-24 p-1 bg-white dark:bg-slate-600 border rounded text-right dark:text-white" /></div>))}</div><p className="text-[10px] text-slate-400 mt-2">* Enter negative amount (e.g. -50000) for credit card debt.</p></div>
-                                    <div className="p-5 bg-orange-50 dark:bg-orange-900/20 rounded-2xl border border-orange-100 dark:border-orange-800"><div className="flex justify-between items-center mb-3"><h3 className="font-bold text-orange-900 dark:text-orange-200">Active Loans</h3><button onClick={() => setShowLoanForm(!showLoanForm)} className="text-xs bg-orange-200 text-orange-800 px-2 py-1 rounded hover:bg-orange-300">Add Loan</button></div>{showLoanForm && (<div className="mb-4 p-3 bg-white dark:bg-slate-700 rounded-xl space-y-2 animate-fade-in"><input type="text" placeholder="Loan Name (e.g. Car Loan)" value={newLoan.name} onChange={(e) => setNewLoan({...newLoan, name: e.target.value})} className="w-full p-2 text-xs border rounded dark:text-black" /><input type="number" placeholder="Total Principal Amount" value={newLoan.total} onChange={(e) => setNewLoan({...newLoan, total: e.target.value})} className="w-full p-2 text-xs border rounded dark:text-black" /><button onClick={handleAddLoan} className="w-full bg-orange-600 text-white py-2 rounded text-xs font-bold">Save Loan</button></div>)}<div className="space-y-2">{(loans || []).filter(l => l && l.name).map(l => (<div key={l.id} className="flex justify-between items-center text-xs p-2 bg-white dark:bg-slate-700 rounded-lg"><div><p className="font-bold dark:text-white">{l.name}</p><p className="text-slate-400">Paid: {l.paid} / {l.total}</p></div><div className="flex gap-2"><button onClick={() => handleUpdateLoanBalance(l.id, prompt("Correct Paid Amount:", l.paid))} className="text-blue-500 underline">Edit</button><button onClick={() => handleDelete('loans', l.id)} className="text-red-500">Delete</button></div></div>))}{(loans || []).length === 0 && <p className="text-center text-xs text-orange-400">No active loans.</p>}</div></div>
                                     
-                                    {/* Finance Charges Tool */}
-                                    <div className="p-5 bg-purple-50 dark:bg-purple-900/20 rounded-2xl border border-purple-100 dark:border-purple-800">
-                                        <div className="flex justify-between items-center mb-3">
-                                            <h3 className="font-bold text-purple-900 dark:text-purple-200">Auto Finance Charge</h3>
+                                    {/* RECEIPT DESIGNER */}
+                                    <div className="p-5 bg-slate-50 dark:bg-slate-700/30 rounded-2xl border border-slate-200 dark:border-slate-600 col-span-1 lg:col-span-2">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2"><Icons.Pencil className="w-5 h-5 text-indigo-500" /> Receipt Designer</h3>
+                                            <div className="flex gap-2">
+                                                <button onClick={resetReceiptSettings} className="text-xs text-red-500 font-bold hover:bg-red-50 px-3 py-1 rounded-lg">Reset</button>
+                                                <button onClick={saveReceiptSettings} className="text-xs bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-700">Save Design</button>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-2 items-end">
-                                            <div className="flex-1">
-                                                <label className="text-[10px] text-purple-500 uppercase font-bold">Card</label>
-                                                <select value={financeChargeCard} onChange={(e) => setFinanceChargeCard(e.target.value)} className="w-full p-2 text-xs rounded-lg border-none outline-none dark:text-black">
-                                                    <option value="">Select</option>
-                                                    {summary.creditGroup.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                                                </select>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                            <div className="space-y-4">
+                                                {/* Logo Section */}
+                                                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                                                    <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Logo</label>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="relative w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center border border-dashed border-slate-300 overflow-hidden">
+                                                            {receiptSettings.logo ? <img src={receiptSettings.logo} className="w-full h-full object-contain" /> : <Icons.Image className="text-slate-300 w-6 h-6" />}
+                                                            <input type="file" accept="image/*" onChange={handleLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                                        </div>
+                                                        <div className="flex-1 space-y-2">
+                                                            <div className="flex items-center justify-between text-xs">
+                                                                <span>Size: {receiptSettings.logoSize}mm</span>
+                                                                <input type="range" min="10" max="50" value={receiptSettings.logoSize} onChange={e => setReceiptSettings({...receiptSettings, logoSize: parseInt(e.target.value)})} className="w-24" />
+                                                            </div>
+                                                            <div className="flex gap-1">
+                                                                {['left', 'center', 'right'].map(align => (
+                                                                    <button key={align} onClick={() => setReceiptSettings({...receiptSettings, logoAlignment: align})} className={`p-1.5 rounded border ${receiptSettings.logoAlignment === align ? 'bg-indigo-100 border-indigo-500 text-indigo-600' : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-400'}`}>
+                                                                        {align === 'left' && <Icons.AlignLeft className="w-4 h-4" />}
+                                                                        {align === 'center' && <Icons.AlignCenter className="w-4 h-4" />}
+                                                                        {align === 'right' && <Icons.AlignRight className="w-4 h-4" />}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Header Text */}
+                                                <div className="space-y-2">
+                                                    <input type="text" value={receiptSettings.instituteName} onChange={e => setReceiptSettings({...receiptSettings, instituteName: e.target.value})} className="w-full p-2 text-sm border rounded-lg dark:bg-slate-800 dark:text-white" placeholder="Institute Name" />
+                                                    <input type="text" value={receiptSettings.tagline} onChange={e => setReceiptSettings({...receiptSettings, tagline: e.target.value})} className="w-full p-2 text-xs border rounded-lg dark:bg-slate-800 dark:text-white" placeholder="Tagline" />
+                                                    <input type="text" value={receiptSettings.title} onChange={e => setReceiptSettings({...receiptSettings, title: e.target.value})} className="w-full p-2 text-sm font-bold border rounded-lg dark:bg-slate-800 dark:text-white" placeholder="Receipt Title" />
+                                                </div>
+
+                                                {/* Colors */}
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Header Background</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <input type="color" value={receiptSettings.headerBgColor} onChange={e => setReceiptSettings({...receiptSettings, headerBgColor: e.target.value})} className="h-8 w-8 rounded cursor-pointer border-none" />
+                                                            <span className="text-xs dark:text-white">{receiptSettings.headerBgColor}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Header Text</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <input type="color" value={receiptSettings.headerTextColor} onChange={e => setReceiptSettings({...receiptSettings, headerTextColor: e.target.value})} className="h-8 w-8 rounded cursor-pointer border-none" />
+                                                            <span className="text-xs dark:text-white">{receiptSettings.headerTextColor}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Footer & Sign */}
+                                                <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-600">
+                                                    <input type="text" value={receiptSettings.signatoryName} onChange={e => setReceiptSettings({...receiptSettings, signatoryName: e.target.value})} className="w-full p-2 text-xs border rounded-lg dark:bg-slate-800 dark:text-white" placeholder="Signatory Name" />
+                                                    <input type="text" value={receiptSettings.signatoryLabel} onChange={e => setReceiptSettings({...receiptSettings, signatoryLabel: e.target.value})} className="w-full p-2 text-xs border rounded-lg dark:bg-slate-800 dark:text-white" placeholder="Signatory Label" />
+                                                    <textarea value={receiptSettings.footerText} onChange={e => setReceiptSettings({...receiptSettings, footerText: e.target.value})} className="w-full p-2 text-xs border rounded-lg dark:bg-slate-800 dark:text-white" rows="2" placeholder="Footer Text"></textarea>
+                                                    <label className="flex items-center gap-2 text-xs dark:text-white cursor-pointer">
+                                                        <input type="checkbox" checked={receiptSettings.showFooter} onChange={e => setReceiptSettings({...receiptSettings, showFooter: e.target.checked})} /> Show Footer
+                                                    </label>
+                                                </div>
                                             </div>
-                                            <div className="w-20">
-                                                <label className="text-[10px] text-purple-500 uppercase font-bold">Rate %</label>
-                                                <input type="number" value={financeChargeRate} onChange={(e) => setFinanceChargeRate(e.target.value)} className="w-full p-2 text-xs rounded-lg border-none outline-none dark:text-black" placeholder="3.5" />
+
+                                            {/* Live Preview */}
+                                            <div className="bg-slate-200 dark:bg-slate-900 p-4 rounded-2xl flex items-center justify-center overflow-hidden">
+                                                <div className="scale-[0.65] origin-top transform transition-transform">
+                                                    <ReceiptPreview />
+                                                </div>
                                             </div>
-                                            <button onClick={handleCalculateInterest} className="bg-purple-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-purple-700">Calculate & Add</button>
                                         </div>
                                     </div>
-
+                                    
+                                    {/* Existing Settings Panels */}
+                                    <div className="p-5 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-200 dark:border-slate-600"><h3 className="font-bold text-slate-900 dark:text-white mb-3">Opening Balances</h3><div className="space-y-2">{ACCOUNTS.map(acc => (<div key={acc} className="flex justify-between items-center text-sm"><span className="text-slate-600 dark:text-slate-300">{acc}</span><input type="number" placeholder="0" value={openingBalances[acc] || ''} onChange={(e) => { const val = parseFloat(e.target.value); setOpeningBalances({...openingBalances, [acc]: val}); if(mode==='local') saveLocalData(null, null, null, {...openingBalances, [acc]: val}); }} className="w-24 p-1 bg-white dark:bg-slate-600 border rounded text-right dark:text-white" /></div>))}</div><p className="text-[10px] text-slate-400 mt-2">* Enter negative amount (e.g. -50000) for credit card debt.</p></div>
+                                    <div className="p-5 bg-orange-50 dark:bg-orange-900/20 rounded-2xl border border-orange-100 dark:border-orange-800"><div className="flex justify-between items-center mb-3"><h3 className="font-bold text-orange-900 dark:text-orange-200">Active Loans</h3><button onClick={() => setShowLoanForm(!showLoanForm)} className="text-xs bg-orange-200 text-orange-800 px-2 py-1 rounded hover:bg-orange-300">Add Loan</button></div>{showLoanForm && (<div className="mb-4 p-3 bg-white dark:bg-slate-700 rounded-xl space-y-2 animate-fade-in"><input type="text" placeholder="Loan Name (e.g. Car Loan)" value={newLoan.name} onChange={(e) => setNewLoan({...newLoan, name: e.target.value})} className="w-full p-2 text-xs border rounded dark:text-black" /><input type="number" placeholder="Total Principal Amount" value={newLoan.total} onChange={(e) => setNewLoan({...newLoan, total: e.target.value})} className="w-full p-2 text-xs border rounded dark:text-black" /><button onClick={handleAddLoan} className="w-full bg-orange-600 text-white py-2 rounded text-xs font-bold">Save Loan</button></div>)}<div className="space-y-2">{(loans || []).filter(l => l && l.name).map(l => (<div key={l.id} className="flex justify-between items-center text-xs p-2 bg-white dark:bg-slate-700 rounded-lg"><div><p className="font-bold dark:text-white">{l.name}</p><p className="text-slate-400">Paid: {l.paid} / {l.total}</p></div><div className="flex gap-2"><button onClick={() => handleUpdateLoanBalance(l.id, prompt("Correct Paid Amount:", l.paid))} className="text-blue-500 underline">Edit</button><button onClick={() => handleDelete('loans', l.id)} className="text-red-500">Delete</button></div></div>))}{(loans || []).length === 0 && <p className="text-center text-xs text-orange-400">No active loans.</p>}</div></div>
+                                    <div className="p-5 bg-purple-50 dark:bg-purple-900/20 rounded-2xl border border-purple-100 dark:border-purple-800"><div className="flex justify-between items-center mb-3"><h3 className="font-bold text-purple-900 dark:text-purple-200">Auto Finance Charge</h3></div><div className="flex gap-2 items-end"><div className="flex-1"><label className="text-[10px] text-purple-500 uppercase font-bold">Card</label><select value={financeChargeCard} onChange={(e) => setFinanceChargeCard(e.target.value)} className="w-full p-2 text-xs rounded-lg border-none outline-none dark:text-black"><option value="">Select</option>{summary.creditGroup.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</select></div><div className="w-20"><label className="text-[10px] text-purple-500 uppercase font-bold">Rate %</label><input type="number" value={financeChargeRate} onChange={(e) => setFinanceChargeRate(e.target.value)} className="w-full p-2 text-xs rounded-lg border-none outline-none dark:text-black" placeholder="3.5" /></div><button onClick={handleCalculateInterest} className="bg-purple-600 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-purple-700">Calculate & Add</button></div></div>
                                     <div className="p-5 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800"><div className="flex items-center gap-3 mb-3"><div className="p-2 bg-white dark:bg-indigo-900 rounded-lg text-indigo-600 dark:text-indigo-400"><Icons.MessageSquare className="w-5 h-5" /></div><h3 className="font-bold text-indigo-900 dark:text-indigo-200">Reminder Template</h3></div><textarea rows="4" value={reminderMsg} onChange={e => setReminderMsg(e.target.value)} className="w-full p-3 text-xs border border-indigo-200 dark:border-indigo-700 rounded-xl mb-3 focus:ring-2 focus:ring-indigo-500 outline-none dark:bg-slate-700 dark:text-white"></textarea><div className="flex justify-between items-center"><p className="text-[10px] text-indigo-400">Placeholders: {'{name}'}, {'{amount}'}, {'{months}'}</p><button onClick={() => { localStorage.setItem('my_wallet_msg', reminderMsg); alert("Saved!"); }} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 transition">Save Template</button></div></div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 col-span-1 lg:col-span-2"><div className="p-5 bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-100 dark:border-blue-800"><div className="flex items-center gap-3 mb-3"><div className="p-2 bg-white dark:bg-blue-900 rounded-lg text-blue-600 dark:text-blue-400"><Icons.Share className="w-5 h-5" /></div><h3 className="font-bold text-blue-900 dark:text-blue-200">Backup</h3></div><button onClick={() => handleBackup(false)} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm shadow-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition"><Icons.Upload className="w-4 h-4" /> Backup to Drive</button></div><div className="p-5 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-200 dark:border-slate-600"><div className="flex items-center gap-3 mb-3"><div className="p-2 bg-white dark:bg-slate-600 rounded-lg text-slate-600 dark:text-slate-300"><Icons.Download className="w-5 h-5" /></div><h3 className="font-bold text-slate-900 dark:text-white">Restore</h3></div><div className="relative"><input type="file" accept=".json" onChange={handleImport} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" /><button className="w-full bg-white dark:bg-slate-600 border-2 border-slate-200 dark:border-slate-500 text-slate-600 dark:text-white py-3 rounded-xl font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-500 transition flex items-center justify-center gap-2"><Icons.Upload className="w-4 h-4" /> Select File</button></div></div></div>
                                     <div className="p-5 bg-red-50 rounded-2xl border border-red-100 mt-8 col-span-1 lg:col-span-2"><div className="flex items-center gap-2 mb-3"><Icons.Tool className="w-5 h-5 text-red-500" /><h3 className="font-bold text-red-800">Troubleshoot</h3></div><div className="space-y-2"><button onClick={fixCorruptedDataInternal} className="w-full bg-white text-red-600 border border-red-200 py-2 rounded-xl font-bold text-xs shadow-sm hover:bg-red-50">Fix Corrupted Data</button><button onClick={() => { if(confirm('WARNING: This will delete ALL locally saved data. Do you want to proceed?')) { localStorage.clear(); window.location.reload(); } }} className="w-full bg-red-600 text-white border border-red-600 py-2 rounded-xl font-bold text-xs shadow-sm hover:bg-red-700">Factory Reset</button></div></div>
