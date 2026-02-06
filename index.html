@@ -132,6 +132,17 @@
         .bg-gradient-primary { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
         .text-gradient { background-clip: text; -webkit-background-clip: text; color: transparent; background-image: linear-gradient(to right, #4f46e5, #9333ea); }
         .dark .text-gradient { background-image: linear-gradient(to right, #818cf8, #c084fc); }
+
+        /* Receipt Customization CSS */
+        .logo-img {
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        .header-logo {
+            width: auto;
+            max-height: 120px;
+        }
     </style>
 </head>
 <body class="app-background text-slate-900 transition-colors duration-300 dark:text-slate-100 h-screen w-screen overflow-hidden">
@@ -241,7 +252,7 @@
             signatoryLabel: "Authorized Signatory",
             
             logo: null, // Base64 string
-            logoSize: 20, // width in mm
+            logoSize: 80, // default size in px (for preview) / maps to mm for PDF
             logoAlignment: 'center', // 'left', 'center', 'right'
             
             headerBgColor: "#4f46e5", // Primary Color (Indigo 600)
@@ -938,8 +949,16 @@
 
                     // 2. Draw Logo (Left)
                     if (s.logo) {
-                        const logoSize = 25; // fixed reasonable size for header
-                        doc.addImage(s.logo, 'PNG', 15, startY + (headerHeight - logoSize)/2, logoSize, logoSize);
+                        // Use slider value as width in pixels, convert to mm for PDF
+                        // 1 px ~= 0.264583 mm
+                        const logoWidthMm = s.logoSize * 0.264583;
+                        // For simplicity in PDF, use width as height (square) or let it stretch if aspect ratio differs.
+                        // Ideally we should know aspect ratio, but base64 doesn't give it easily synchronously.
+                        // Assuming square or close to it for logo area.
+                        // Center vertically in header
+                        const logoY = startY + (headerHeight - logoWidthMm)/2;
+                        
+                        doc.addImage(s.logo, 'PNG', 15, logoY, logoWidthMm, logoWidthMm);
                     } else {
                         // Fallback Vector Icon (White/Text Color)
                         doc.setFillColor(...headerText);
@@ -1289,11 +1308,11 @@
                         {/* Header Box */}
                         <div className="p-4 rounded-t-lg flex justify-between items-center mb-4" style={{backgroundColor: s.headerBgColor, color: s.headerTextColor}}>
                             {/* Left: Logo */}
-                            <div className="w-16 h-16 flex-shrink-0 flex items-center justify-center bg-white/10 rounded">
+                            <div className="flex-shrink-0 flex items-center justify-center bg-white/10 rounded header-logo-container" style={{ width: `${s.logoSize}px`, height: 'auto', minHeight: '60px' }}>
                                 {s.logo ? (
-                                    <img src={s.logo} alt="Logo" className="w-full h-full object-contain" />
+                                    <img src={s.logo} alt="Logo" className="logo-img" />
                                 ) : (
-                                    <Icons.GraduationCap className="w-10 h-10 text-white" />
+                                    <Icons.GraduationCap className="w-full h-full p-2 text-white" />
                                 )}
                             </div>
 
@@ -1871,8 +1890,8 @@
                                                         </div>
                                                         <div className="flex-1 space-y-2">
                                                             <div className="flex items-center justify-between text-xs">
-                                                                <span>Size: {receiptSettings.logoSize}mm</span>
-                                                                <input type="range" min="10" max="50" value={receiptSettings.logoSize} onChange={e => setReceiptSettings({...receiptSettings, logoSize: parseInt(e.target.value)})} className="w-24" />
+                                                                <span>Size: {receiptSettings.logoSize}px</span>
+                                                                <input type="range" min="50" max="200" value={receiptSettings.logoSize} onChange={e => setReceiptSettings({...receiptSettings, logoSize: parseInt(e.target.value)})} className="w-24" />
                                                             </div>
                                                             <div className="flex gap-1">
                                                                 {['left', 'center', 'right'].map(align => (
