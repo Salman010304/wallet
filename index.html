@@ -784,7 +784,7 @@
 
             const allCategories = useMemo(() => {
                 const cats = new Set(expenseCategories.map(c => c.name));
-                ['Tuition Fees', 'Salary', 'Other', 'Loan/EMI', 'Credit Card Bill', 'Lending', 'Repayment', 'Interest', 'Investment'].forEach(c => cats.add(c));
+                ['Tuition Fees', 'Salary', 'Other', 'Loan/EMI', 'Credit Card Bill', 'Lending', 'Repayment', 'Interest', 'Investment', 'Transfer'].forEach(c => cats.add(c));
                 transactions.forEach(t => cats.add(t.category));
                 return Array.from(cats).sort();
             }, [expenseCategories, transactions]);
@@ -862,6 +862,7 @@
                         investment += amt;
                         if (balances[t.paymentMethod] !== undefined) balances[t.paymentMethod] -= amt;
                     } else if (t.type === 'transfer') { 
+                        // EXPLICIT TRANSFER LOGIC: Reduces from sender, Adds to receiver
                         if (balances[t.paymentMethod] !== undefined) balances[t.paymentMethod] -= amt; 
                         if (t.transferTo && balances[t.transferTo] !== undefined) {
                             balances[t.transferTo] += amt; 
@@ -999,32 +1000,40 @@
                 return { opening, closing };
             };
 
-            // --- Running Balance Calculation for Table View ---
+            // --- Running Balance Calculation for Table View (FIXED) ---
             const transactionsWithBalance = useMemo(() => {
-                // If filtering by ALL, showing a running balance is misleading or complex, so we just return filtered TXs
                 if (accountFilter === 'All') return safeFilteredTransactions;
 
-                // 1. Get Opening Balance for the specific Account
                 const acc = accountFilter;
                 let runningBal = parseFloat(openingBalances[acc] || 0);
 
-                // 2. Get ALL transactions for this account to build the history correctly
-                // We must process from the very beginning (or assumed beginning) sorted by Date ASC
-                const accountTxs = transactions.filter(t => 
+                // 1. Get all relevant transactions
+                let accountTxs = transactions.filter(t => 
                     t.paymentMethod === acc || t.transferTo === acc || (t.category === 'Credit Card Bill' && t.transferTo === acc)
-                ).sort((a,b) => new Date(a.date) - new Date(b.date));
+                );
 
-                // 3. Compute running balance
+                // 2. Sort accurately from OLDEST to NEWEST to calculate running balance properly
+                accountTxs.sort((a,b) => {
+                    const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+                    if (dateDiff !== 0) return dateDiff;
+                    // If same day, use exact timestamp or ID to ensure sequential sorting
+                    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : parseInt(a.id);
+                    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : parseInt(b.id);
+                    return timeA - timeB;
+                });
+
+                // 3. Compute running balance sequentially
                 const accountTxsWithBal = accountTxs.map(t => {
                     if (t.affectWallet !== false) {
-                         const amt = parseFloat(t.amount);
+                         const amt = parseFloat(t.amount || 0);
+                         
+                         // Cash leaving the account (Expense/Investment/Transfer Out)
                          if (t.paymentMethod === acc) {
-                             // Money leaving account or Income entering
                              if (t.type === 'income') runningBal += amt;
                              else if (t.type === 'expense' || t.type === 'investment' || t.type === 'transfer') runningBal -= amt;
                          }
+                         // Cash entering the account (Transfer In/Bill Pay)
                          if (t.transferTo === acc) {
-                             // Money entering account via transfer or bill pay
                              if (t.type === 'transfer') runningBal += amt;
                              if (t.type === 'expense' && t.category === 'Credit Card Bill') runningBal += amt;
                          }
@@ -1051,10 +1060,36 @@
                 if (categoryFilter) result = result.filter(t => t.category === categoryFilter);
                 if (historyStudentFilter) result = result.filter(t => t.studentName === historyStudentFilter);
 
-                // 5. Sort DESC for display (Newest First) like a standard statement
-                return result.sort((a,b) => new Date(b.date) - new Date(a.date));
+                // 5. Reverse sort for UI (NEWEST to OLDEST)
+                return result.reverse();
 
             }, [transactions, accountFilter, dateFilter, categoryFilter, historyStudentFilter, openingBalances, safeFilteredTransactions]);
+
+            // Helper for Bank Statement UI
+            const getBankStatementImpact = (t, accFilter) => {
+                 let debit = null;
+                 let credit = null;
+                 const amt = parseFloat(t.amount || 0);
+
+                 if (accFilter === 'All') {
+                     if (t.type === 'income') credit = amt;
+                     else if (t.type === 'expense' || t.type === 'investment') debit = amt;
+                     else if (t.type === 'transfer') { debit = amt; credit = amt; }
+                 } else {
+                     let impact = 0;
+                     if (t.paymentMethod === accFilter) {
+                         if (t.type === 'income') impact += amt;
+                         else if (t.type === 'expense' || t.type === 'investment' || t.type === 'transfer') impact -= amt;
+                     }
+                     if (t.transferTo === accFilter) {
+                         if (t.type === 'transfer') impact += amt;
+                         if (t.type === 'expense' && t.category === 'Credit Card Bill') impact += amt;
+                     }
+                     if (impact < 0) debit = Math.abs(impact);
+                     if (impact > 0) credit = impact;
+                 }
+                 return { debit, credit };
+            };
 
 
             const tStats = (() => {
@@ -1441,6 +1476,7 @@
 
                 if (type === 'transfer') {
                     finalTransferTo = transferTo;
+                    finalCategory = 'Transfer'; // Ensure transfers save consistently with this category
                     if (!finalTransferTo || finalTransferTo === paymentMethod) {
                         alert("Invalid Transfer: Destination account cannot be the same as Source account.");
                         setIsSubmitting(false);
@@ -2371,56 +2407,73 @@
                                         </div>
                                     )}
 
+                                    {/* Bank Statement UI */}
                                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
-                                        <div className="p-4 border-b border-slate-100 dark:border-slate-700 font-bold text-sm dark:text-white">Transaction History ({safeFilteredTransactions.length})</div>
+                                        <div className="p-4 border-b border-slate-100 dark:border-slate-700 font-bold text-sm dark:text-white">Transaction Statement ({transactionsWithBalance.length})</div>
                                         
-                                        {/* Table Header with Balance Column Condition */}
-                                        <div className="p-3 bg-slate-50 dark:bg-slate-700/50 flex justify-between text-[10px] font-bold text-slate-400 uppercase">
-                                            <div className="flex-1">Details</div>
-                                            <div className="w-24 text-right">Amount</div>
-                                            {accountFilter !== 'All' && <div className="w-24 text-right hidden md:block">Balance</div>}
-                                            <div className="w-16 text-right">Action</div>
-                                        </div>
-                                        
-                                        <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                                            {transactionsWithBalance.slice(0, showAllTransactions ? undefined : 8).map(t => (
-                                                <div key={t.id} className="flex justify-between items-center p-4 hover:bg-slate-50 dark:hover:bg-slate-700 group">
-                                                    <div className="min-w-0 mr-4 flex-1">
-                                                        <p className="font-bold dark:text-white truncate">{t.description}</p>
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                                            {t.dateStr} • {t.category}
-                                                            {accountFilter === 'All' && <span className="ml-1 text-slate-400">• {t.paymentMethod}</span>}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex items-center gap-4 shrink-0">
-                                                        <p className={`font-bold whitespace-nowrap text-right w-24 ${t.type === 'income' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                            {t.type === 'income' ? '+' : '-'} {t.amount.toLocaleString()}
-                                                        </p>
-                                                        
-                                                        {accountFilter !== 'All' && (
-                                                            <div className="hidden md:block w-24 text-right">
-                                                                <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                                                                    ₹{t.runningBalance.toLocaleString()}
-                                                                </p>
-                                                            </div>
-                                                        )}
-
-                                                        <div className="w-16 flex justify-end gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => { setEditingTx(t); setAmount(t.amount); setDescription(t.description); setStudentName(t.studentName || ''); setFeeMonth(t.feeMonth || ''); if(t.feeMonth && t.feeMonth.includes(',')) setSelectedMonths(t.feeMonth.split(', ')); setType(t.type); setCategory(t.category); setPaymentMethod(t.paymentMethod); if(t.transferTo) setTransferTo(t.transferTo); setDate(t.date); setActiveTab('add'); }} className="text-blue-400 hover:text-blue-600 p-1"><Icons.Pencil className="w-3 h-3" /></button>
-                                                            <button onClick={() => handleDelete('transactions', t.id)} className="text-red-400 hover:text-red-600 p-1"><Icons.Trash2 className="w-3 h-3" /></button>
-                                                        </div>
-                                                    </div>
+                                        <div className="overflow-x-auto custom-scrollbar">
+                                            <div className="min-w-[700px]">
+                                                {/* Unified Table Header */}
+                                                <div className="p-3 bg-slate-100 dark:bg-slate-700/50 grid grid-cols-12 text-[10px] font-bold text-slate-500 uppercase gap-4 border-b border-slate-200 dark:border-slate-600">
+                                                    <div className="col-span-2">Date</div>
+                                                    <div className="col-span-3">Description</div>
+                                                    <div className="col-span-2 text-right text-rose-500">Debit (Out)</div>
+                                                    <div className="col-span-2 text-right text-emerald-500">Credit (In)</div>
+                                                    {accountFilter !== 'All' && <div className="col-span-2 text-right text-indigo-500">Balance</div>}
+                                                    <div className={`text-right ${accountFilter !== 'All' ? 'col-span-1' : 'col-span-3'}`}>Action</div>
                                                 </div>
-                                            ))}
-                                            
-                                            {transactionsWithBalance.length === 0 && (
-                                                <div className="p-8 text-center text-slate-400 text-sm">No transactions found.</div>
-                                            )}
+                                                
+                                                <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                                                    {transactionsWithBalance.slice(0, showAllTransactions ? undefined : 10).map(t => {
+                                                        const { debit, credit } = getBankStatementImpact(t, accountFilter);
+                                                        return (
+                                                            <div key={t.id} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 group transition-colors grid grid-cols-12 items-center gap-4 text-sm">
+                                                                
+                                                                {/* Columns: Date & Details */}
+                                                                <div className="col-span-2 text-slate-600 dark:text-slate-300 text-xs font-medium">{t.dateStr}</div>
+                                                                <div className="col-span-3 min-w-0">
+                                                                     <p className="font-bold dark:text-white truncate">{t.description}</p>
+                                                                     <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5">
+                                                                         <span className="truncate">{t.category}</span>
+                                                                         {accountFilter === 'All' && t.type === 'transfer' && <span className="text-indigo-500 font-bold truncate">• {t.paymentMethod} ➔ {t.transferTo}</span>}
+                                                                         {accountFilter === 'All' && t.type !== 'transfer' && <span className="truncate">• {t.paymentMethod}</span>}
+                                                                     </div>
+                                                                </div>
+
+                                                                {/* Columns: Amounts */}
+                                                                <div className="col-span-2 text-right">
+                                                                     {debit ? <span className="text-rose-500 font-bold">- {debit.toLocaleString()}</span> : <span className="text-slate-300 dark:text-slate-600">-</span>}
+                                                                </div>
+                                                                <div className="col-span-2 text-right">
+                                                                     {credit ? <span className="text-emerald-500 font-bold">+ {credit.toLocaleString()}</span> : <span className="text-slate-300 dark:text-slate-600">-</span>}
+                                                                </div>
+                                                                
+                                                                {/* Columns: Balance */}
+                                                                {accountFilter !== 'All' && (
+                                                                    <div className="col-span-2 text-right font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded">
+                                                                        ₹{t.runningBalance.toLocaleString()}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Action Buttons */}
+                                                                <div className={`flex justify-end gap-2 lg:opacity-0 group-hover:opacity-100 transition-opacity ${accountFilter !== 'All' ? 'col-span-1' : 'col-span-3'}`}>
+                                                                     <button onClick={() => { setEditingTx(t); setAmount(t.amount); setDescription(t.description); setStudentName(t.studentName || ''); setFeeMonth(t.feeMonth || ''); if(t.feeMonth && t.feeMonth.includes(',')) setSelectedMonths(t.feeMonth.split(', ')); setType(t.type); setCategory(t.category); setPaymentMethod(t.paymentMethod); if(t.transferTo) setTransferTo(t.transferTo); setDate(t.date); setActiveTab('add'); }} className="text-blue-400 hover:text-blue-600 p-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg"><Icons.Pencil className="w-3 h-3" /></button>
+                                                                     <button onClick={() => handleDelete('transactions', t.id)} className="text-red-400 hover:text-red-600 p-1.5 bg-red-50 dark:bg-red-900/30 rounded-lg"><Icons.Trash2 className="w-3 h-3" /></button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    
+                                                    {transactionsWithBalance.length === 0 && (
+                                                        <div className="p-8 text-center text-slate-400 text-sm">No transactions found.</div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                         
-                                        {!showAllTransactions && transactionsWithBalance.length > 8 && (
-                                            <div className="p-3 text-center border-t border-slate-100 dark:border-slate-700">
-                                                <button onClick={() => setShowAllTransactions(true)} className="text-xs font-bold text-indigo-600 hover:text-indigo-800">View All</button>
+                                        {!showAllTransactions && transactionsWithBalance.length > 10 && (
+                                            <div className="p-3 text-center border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
+                                                <button onClick={() => setShowAllTransactions(true)} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-widest">Load More Statements</button>
                                             </div>
                                         )}
                                     </div>
